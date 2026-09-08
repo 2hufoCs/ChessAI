@@ -1,9 +1,9 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "New Piece", menuName = "Piece")]
-public class Piece : ScriptableObject
+public class PieceData : ScriptableObject
 {
-    public PieceID id;
+    public PieceType id;
     public PieceColor color;
     public Sprite sprite;
 }

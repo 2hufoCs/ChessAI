@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: WhiteBishop
   m_EditorClassIdentifier: Assembly-CSharp::Piece
   id: 3
-  color: 8
+  color: 0
   sprite: {fileID: 288352370, guid: 1155aa5c1f6d3674485655f9c73c7bf4, type: 3}

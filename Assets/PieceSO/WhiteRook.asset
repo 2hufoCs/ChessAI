@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: WhiteRook
   m_EditorClassIdentifier: Assembly-CSharp::Piece
   id: 4
-  color: 8
+  color: 0
   sprite: {fileID: -276974858, guid: 1155aa5c1f6d3674485655f9c73c7bf4, type: 3}

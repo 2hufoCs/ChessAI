@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: BlackKing
   m_EditorClassIdentifier: Assembly-CSharp::Piece
   id: 6
-  color: 16
+  color: 8
   sprite: {fileID: -1968861750, guid: 1155aa5c1f6d3674485655f9c73c7bf4, type: 3}

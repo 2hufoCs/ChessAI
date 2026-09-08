@@ -129,6 +129,8 @@ GameObject:
   m_Component:
   - component: {fileID: 513466248}
   - component: {fileID: 513466249}
+  - component: {fileID: 513466250}
+  - component: {fileID: 513466251}
   m_Layer: 0
   m_Name: Board
   m_TagString: Untagged
@@ -163,8 +165,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39a20bacbf60fe0458b54ea107560ba5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveLogic
-  piecePrefab: {fileID: 0}
-  piecesData:
+  _piecePrefab: {fileID: 1194715645466863060, guid: 8eb0796d5921c6144b0e88729c7045f2, type: 3}
+  _piecesData:
   - {fileID: 11400000, guid: 2a37466a4cfc1b54baf4845b24f00492, type: 2}
   - {fileID: 11400000, guid: 35be6ab0687c6894fbcc33cabdaf4964, type: 2}
   - {fileID: 11400000, guid: a167b72da5370df46bc3ed12dafccf3b, type: 2}
@@ -177,6 +179,99 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4314dd57645434a4f93fe39f35d94c6d, type: 2}
   - {fileID: 11400000, guid: 211e01438fd2d684d8f3a66ab18c2f82, type: 2}
   - {fileID: 11400000, guid: 4c92095b408a3b24e926b53ad75c8ef0, type: 2}
+  _basePositionFen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+--- !u!114 &513466250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 513466247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
+  m_Actions: {fileID: -944628639613478452, guid: 1b466eb88118d3a498307c45196d8a09, type: 3}
+  m_NotificationBehavior: 2
+  m_UIInputModule: {fileID: 0}
+  m_DeviceLostEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_DeviceRegainedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ControlsChangedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ActionEvents:
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 513466249}
+        m_TargetAssemblyTypeName: MoveLogic, Assembly-CSharp
+        m_MethodName: OnClick
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 9c51fe5d-b11c-4148-9ee5-e859edaca3bb
+    m_ActionName: 'Player/OnClick[/Mouse/leftButton]'
+  m_NeverAutoSwitchControlSchemes: 0
+  m_DefaultControlScheme: 
+  m_DefaultActionMap: Player
+  m_SplitScreenIndex: -1
+  m_Camera: {fileID: 0}
+--- !u!61 &513466251
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 513466247}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 8, y: 8}
+  m_EdgeRadius: 0
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -410,7 +505,7 @@ GameObject:
   - component: {fileID: 635343662}
   - component: {fileID: 635343661}
   m_Layer: 0
-  m_Name: PieceTilemap
+  m_Name: BoardTilemap
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -478,7 +573,7 @@ TilemapRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0, y: 0, z: 0}

@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: WhitePawn
   m_EditorClassIdentifier: Assembly-CSharp::Piece
   id: 1
-  color: 8
+  color: 0
   sprite: {fileID: 757155249, guid: 1155aa5c1f6d3674485655f9c73c7bf4, type: 3}
