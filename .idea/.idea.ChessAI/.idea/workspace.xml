@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakeProjectFlavorService">
+    <option name="flavorId" value="CMakePlainProjectFlavor" />
+  </component>
+  <component name="CMakeSettings">
+    <configurations />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="988ab5d9-ab6b-44d8-9541-976754728eb1" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
@@ -14,10 +23,76 @@
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/MoveLogic.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/Piece.cs" root0="FORCE_HIGHLIGHTING" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 3,
-  "fromUser": false
-}]]></component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.005486112796339" />
+      <entry key="MS500" value="1.3565116596754492" />
+      <entry key="S2" value="2.0131606684893235" />
+      <entry key="S5" value="2.4684197344399745" />
+      <entry key="S10" value="2.7151996344166873" />
+      <entry key="S30" value="3.389136256292817" />
+      <entry key="S60" value="4.682670666742273" />
+      <entry key="M2" value="8.126409916892253" />
+      <entry key="M5" value="19.018151621695807" />
+      <entry key="M10" value="35.91473726824966" />
+      <entry key="M15" value="48.445152933132476" />
+      <entry key="M30" value="68.82819233644312" />
+      <entry key="H1" value="83.66595142584548" />
+      <entry key="H2" value="92.68692967186715" />
+      <entry key="H4" value="97.67001661473482" />
+      <entry key="D1" value="102.08649117053486" />
+      <entry key="W1" value="102.8688674010749" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="1.4552914704421437E-260" />
+      <entry key="MS500" value="1.158939048826685E-52" />
+      <entry key="S2" value="1.552439138482064E-13" />
+      <entry key="S5" value="1.1264532082124538E-5" />
+      <entry key="S10" value="0.0047367790552432665" />
+      <entry key="S30" value="0.2765973998370592" />
+      <entry key="S60" value="0.9620710583612884" />
+      <entry key="M2" value="2.5847345636594476" />
+      <entry key="M5" value="7.452805962626445" />
+      <entry key="M10" value="13.928777609985302" />
+      <entry key="M15" value="18.225902141847975" />
+      <entry key="M30" value="24.753888493690397" />
+      <entry key="H1" value="29.28300337075667" />
+      <entry key="H2" value="31.97254796013745" />
+      <entry key="H4" value="33.4411417657932" />
+      <entry key="D1" value="34.73365880844558" />
+      <entry key="W1" value="34.961787747478404" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.026460791016319558" />
+      <entry key="MS500" value="0.4913478225181639" />
+      <entry key="S2" value="1.323327794277601" />
+      <entry key="S5" value="2.067177002674913" />
+      <entry key="S10" value="2.4884783132576045" />
+      <entry key="S30" value="3.565050469806332" />
+      <entry key="S60" value="5.57015191084589" />
+      <entry key="M2" value="10.637557396500393" />
+      <entry key="M5" value="26.396187073862173" />
+      <entry key="M10" value="49.7779441588909" />
+      <entry key="M15" value="66.61532158313764" />
+      <entry key="M30" value="93.54526673637702" />
+      <entry key="H1" value="112.92748645846551" />
+      <entry key="H2" value="124.647840531223" />
+      <entry key="H4" value="131.10509411073406" />
+      <entry key="D1" value="136.81910329471785" />
+      <entry key="W1" value="137.83050471613777" />
+    </decayedShown>
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3,
+  &quot;fromUser&quot;: false
+}</component>
   <component name="ProjectId" id="3J2rPQ7ikiOoliJ9Nn8gBpTGM5M" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -26,13 +101,20 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "cidr.known.project.marker": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "git-widget-placeholder": "main",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
     "settings.editor.selected.configurable": "preferences.keymap"
   }
 }]]></component>

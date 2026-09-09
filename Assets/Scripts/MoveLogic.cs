@@ -15,6 +15,7 @@ public class MoveLogic : MonoBehaviour
     [SerializeField] private List<PieceData> _piecesData = new ();
 
     private GameObject heldPiece;
+    [SerializeField] private LayerMask _pieceLayer;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -34,25 +35,28 @@ public class MoveLogic : MonoBehaviour
     {
         if (!context.performed && !context.canceled) return;
         
-        Vector2 mouseScreenPos =  Input.mousePosition;
-        Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
-        RaycastHit2D hit = Physics2D.Raycast(Camera.main.transform.position, (mouseScreenPos - mouseWorldPos));
+        Vector3 mouseScreenPos =  Input.mousePosition;
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
+        RaycastHit2D hit = Physics2D.Raycast(mouseWorldPos, mouseWorldPos, float.PositiveInfinity, _pieceLayer);
         Vector2 snappedPos = WorldToBoard(mouseWorldPos);
+        
+        DrawArrow.ForDebug(mouseWorldPos, Camera.main.transform.forward * 20);
+        Debug.Break();
         
         if (context.performed)
         {
             if (!hit.collider) return;
+            Debug.Log("raycast just hit " + hit.collider.name);
             if (!IsInsideBounds(mouseWorldPos)) return;
-            
+    
             GameObject piece = GetPiece(snappedPos);
             if (piece) heldPiece = piece;
         }
         else if (context.canceled)
         {
             if (!heldPiece) return;
-            Vector3 boardPos = WorldToBoard(snappedPos);
-            boardPos = ClampPieceBoardPos(boardPos);
-            heldPiece.transform.position = boardPos;
+            snappedPos = ClampPieceBoardPos(snappedPos);
+            heldPiece.transform.position = BoardToWorld(snappedPos);
             heldPiece = null;
         }
     }
@@ -87,6 +91,7 @@ public class MoveLogic : MonoBehaviour
 
         if (_pieces.ContainsKey(pos))
         {
+            Debug.Log("overriding square with existing piece");
             Destroy(_pieces[pos]);
             _pieces.Remove(pos);
         }
@@ -137,6 +142,7 @@ public class MoveLogic : MonoBehaviour
     
     void LoadPositionFromFen(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     {
+        Debug.Log("loading fen position");
         var pieceTypeFromSymbol = new Dictionary<char, int>()
         {
             ['k'] = (int)PieceType.King, ['p'] = (int)PieceType.Pawn, ['n'] = (int)PieceType.Knight,
