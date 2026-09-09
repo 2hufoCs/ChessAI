@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a656451d43c67ff4e8e1d6659b55aa63, type: 3}
   m_Name: WhiteQueen
   m_EditorClassIdentifier: Assembly-CSharp::Piece
-  id: 5
+  type: 5
   color: 0
   sprite: {fileID: 1646054847, guid: 1155aa5c1f6d3674485655f9c73c7bf4, type: 3}

@@ -14,7 +14,8 @@ public class MoveLogic : MonoBehaviour
     [SerializeField] private GameObject _piecePrefab;
     [SerializeField] private List<PieceData> _piecesData = new ();
 
-    private GameObject heldPiece;
+    private GameObject _heldPiece;
+    private Move _heldPieceMove;
     [SerializeField] private LayerMask _pieceLayer;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
@@ -27,8 +28,8 @@ public class MoveLogic : MonoBehaviour
 
     void Update()
     {
-        if (heldPiece)
-            heldPiece.transform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        if (_heldPiece)
+            _heldPiece.transform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
     }
 
     public void OnClick(InputAction.CallbackContext context)
@@ -40,51 +41,64 @@ public class MoveLogic : MonoBehaviour
         RaycastHit2D hit = Physics2D.Raycast(mouseWorldPos, mouseWorldPos, float.PositiveInfinity, _pieceLayer);
         Vector2 snappedPos = WorldToBoard(mouseWorldPos);
         
-        DrawArrow.ForDebug(mouseWorldPos, Camera.main.transform.forward * 20);
-        Debug.Break();
-        
         if (context.performed)
         {
             if (!hit.collider) return;
-            Debug.Log("raycast just hit " + hit.collider.name);
+
             if (!IsInsideBounds(mouseWorldPos)) return;
-    
-            GameObject piece = GetPiece(snappedPos);
-            if (piece) heldPiece = piece;
+            
+            if (_pieces.TryGetValue(snappedPos, out GameObject piece))
+            {
+                Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
+                _heldPiece = piece;
+                _heldPieceMove = new()
+                {
+                    startSquare = snappedWholePos
+                };
+                
+                Debug.Log($"raycast just hit {hit.collider.name}, matrix square has {_board[snappedWholePos.x, snappedWholePos.y]}]");
+            }
         }
         else if (context.canceled)
         {
-            if (!heldPiece) return;
+            if (!_heldPiece) return;
             snappedPos = ClampPieceBoardPos(snappedPos);
-            heldPiece.transform.position = BoardToWorld(snappedPos);
-            heldPiece = null;
+            _heldPieceMove.endSquare = Vector2Int.RoundToInt(snappedPos);
+            MakeMove(_heldPiece, _heldPieceMove);
+            _heldPiece = null;
         }
     }
 
-    GameObject GetPiece(Vector2 pos)
+    void MakeMove(GameObject piece, Move move)
     {
-        if (_pieces.ContainsKey(pos)) return _pieces[pos];
-        return null;
+        PieceData data = GetPieceData(piece.GetComponent<SpriteRenderer>().sprite);
+        int value = (int)data.type + (int)data.color;
+        
+        Debug.Log("supposed to be the pawn: " + _board[move.startSquare.x, move.startSquare.y]);
+        _board[move.startSquare.y, move.startSquare.x] = 0;
+        _board[move.endSquare.y, move.endSquare.x] = value;
+        Debug.Log($"move to {move.endSquare}, started from {move.startSquare}");
+        piece.transform.position = BoardToWorld(move.endSquare);
     }
 
-    Vector2Int FindPiece(PieceType id, PieceColor color)
-    {
-        for (int col = 0; col < 8; col++)
-        {
-            for (int row = 0; row < 8; row++)
-            {
-                if (_board[row, col] == (int)id + (int)color)
-                    return new Vector2Int(row, col);
-            }
-        }
-        return -Vector2Int.one;
-    }
+    // Vector2Int FindPiece(PieceType id, PieceColor color)
+    // {
+    //     for (int col = 0; col < 8; col++)
+    //     {
+    //         for (int row = 0; row < 8; row++)
+    //         {
+    //             if (_board[row, col] == (int)id + (int)color)
+    //                 return new Vector2Int(row, col);
+    //         }
+    //     }
+    //     return -Vector2Int.one;
+    // }
 
     void SpawnPiece(PieceData piece,  Vector2 pos)
     {
         Vector2 worldPos = BoardToWorld(pos);
         GameObject newPiece = Instantiate(_piecePrefab, worldPos, Quaternion.identity, transform);
-        newPiece.name = piece.id.ToString();
+        newPiece.name = piece.type.ToString();
 
         PieceData pieceData = GetPieceData(piece);
         newPiece.GetComponent<SpriteRenderer>().sprite = pieceData.sprite;
@@ -102,7 +116,7 @@ public class MoveLogic : MonoBehaviour
     {
         foreach (PieceData pieceData in _piecesData)
         {
-            if (pieceData.id == piece.id && pieceData.color == piece.color) return pieceData;
+            if (pieceData.type == piece.type && pieceData.color == piece.color) return pieceData;
         }
 
         return null;
@@ -112,10 +126,20 @@ public class MoveLogic : MonoBehaviour
     {
         foreach (PieceData pieceData in _piecesData)
         {
-            if ((int)pieceData.id == pieceType && (int)pieceData.color == color) return pieceData;
+            if ((int)pieceData.type == pieceType && (int)pieceData.color == color) return pieceData;
         }
 
         Debug.Log($"no piece data found for type {pieceType}, color {color}");
+        return null;
+    }
+
+    PieceData GetPieceData(Sprite sprite)
+    {
+        foreach (PieceData pieceData in _piecesData)
+        {
+            if (sprite == pieceData.sprite) return pieceData;
+        }
+
         return null;
     }
 
@@ -172,5 +196,28 @@ public class MoveLogic : MonoBehaviour
                 file++;
             }
         }
+        PrintBoardMatrix();
     }
+
+    [Button]
+    void PrintBoardMatrix()
+    {
+        string msg = "";
+        for (int i = 7; i >= 0; i--)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                msg += (PieceType)_board[i, j] + ", ";
+            }
+
+            msg += "\n";
+        }
+        Debug.Log(msg);
+    }
+}
+
+public struct Move
+{
+    public Vector2Int startSquare;
+    public Vector2Int endSquare;
 }
