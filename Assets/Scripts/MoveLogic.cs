@@ -16,8 +16,10 @@ public class MoveLogic : MonoBehaviour
 
     private GameObject _heldPiece;
     private Move _heldPieceMove;
+    
     [SerializeField] private LayerMask _pieceLayer;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    [SerializeField] private Transform squareHighlighterTransform;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -38,26 +40,36 @@ public class MoveLogic : MonoBehaviour
         
         Vector3 mouseScreenPos =  Input.mousePosition;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
-        RaycastHit2D hit = Physics2D.Raycast(mouseWorldPos, mouseWorldPos, float.PositiveInfinity, _pieceLayer);
+        // RaycastHit2D hit = Physics2D.Raycast(mouseWorldPos, Vector2.zero, float.PositiveInfinity, _pieceLayer);
+        Collider2D hit = Physics2D.OverlapCircle(mouseWorldPos, .01f);
         Vector2 snappedPos = WorldToBoard(mouseWorldPos);
+        //
+        // DrawArrow.ForDebug(mouseWorldPos, Vector2.zero, Color.blue);
+        // Debug.Break();
         
         if (context.performed)
         {
-            if (!hit.collider) return;
+            if (!hit)
+            {
+                Debug.Log("didn't hit anything");
+                return;
+            }
 
             if (!IsInsideBounds(mouseWorldPos)) return;
             
-            if (_pieces.TryGetValue(snappedPos, out GameObject piece))
+            Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
+            squareHighlighterTransform.position = BoardToWorld(snappedPos);
+            if (_pieces.TryGetValue(snappedWholePos, out GameObject piece))
             {
-                Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
                 _heldPiece = piece;
+                _heldPiece.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
                 _heldPieceMove = new()
                 {
                     startSquare = snappedWholePos
                 };
-                
-                Debug.Log($"raycast just hit {hit.collider.name}, matrix square has {_board[snappedWholePos.x, snappedWholePos.y]}]");
             }
+            else
+                hit.transform.parent = null;
         }
         else if (context.canceled)
         {
@@ -65,6 +77,8 @@ public class MoveLogic : MonoBehaviour
             snappedPos = ClampPieceBoardPos(snappedPos);
             _heldPieceMove.endSquare = Vector2Int.RoundToInt(snappedPos);
             MakeMove(_heldPiece, _heldPieceMove);
+            
+            _heldPiece.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
             _heldPiece = null;
         }
     }
@@ -74,10 +88,19 @@ public class MoveLogic : MonoBehaviour
         PieceData data = GetPieceData(piece.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
         
-        Debug.Log("supposed to be the pawn: " + _board[move.startSquare.x, move.startSquare.y]);
         _board[move.startSquare.y, move.startSquare.x] = 0;
         _board[move.endSquare.y, move.endSquare.x] = value;
-        Debug.Log($"move to {move.endSquare}, started from {move.startSquare}");
+
+        _pieces.Remove(move.startSquare);
+        // If target pos is taken by other piece, kill it
+        if (_pieces.TryGetValue(move.endSquare, out GameObject objectToDestroy) == piece)
+        {
+            Destroy(_pieces[move.endSquare]);
+            _pieces.Remove(move.endSquare);
+        }
+            
+        _pieces.Add(move.endSquare, piece);
+        
         piece.transform.position = BoardToWorld(move.endSquare);
     }
 
@@ -94,7 +117,7 @@ public class MoveLogic : MonoBehaviour
     //     return -Vector2Int.one;
     // }
 
-    void SpawnPiece(PieceData piece,  Vector2 pos)
+    void SpawnPiece(PieceData piece,  Vector2Int pos)
     {
         Vector2 worldPos = BoardToWorld(pos);
         GameObject newPiece = Instantiate(_piecePrefab, worldPos, Quaternion.identity, transform);
@@ -192,11 +215,10 @@ public class MoveLogic : MonoBehaviour
                 int pieceType = pieceTypeFromSymbol[char.ToLower(symbol)];
                 
                 _board[rank, file] = pieceType + pieceColor;
-                SpawnPiece(GetPieceData(pieceType, pieceColor), new Vector2(file, rank));
+                SpawnPiece(GetPieceData(pieceType, pieceColor), new Vector2Int(file, rank));
                 file++;
             }
         }
-        PrintBoardMatrix();
     }
 
     [Button]
@@ -213,6 +235,50 @@ public class MoveLogic : MonoBehaviour
             msg += "\n";
         }
         Debug.Log(msg);
+    }
+
+    [Button]
+    void PrintPieces()
+    {
+        // string msg = "";
+        // Debug.Log($"there are {_pieces.Count} pieces");
+        // foreach (Vector2 pos in _pieces.Keys)
+        // {
+        //     msg += 
+        // }
+    }
+}
+
+public static class PrecomputedMoveData
+{
+    public static readonly Vector2[] directionOffsets = 
+    {
+        Vector2.right, Vector2.up, Vector2.down, Vector2.left, 
+        new Vector2(1, 1), new Vector2(-1, 1), new Vector2(-1, -1), new Vector2(1, -1) 
+    };
+    public static readonly int[][] numSquaresToEdge;
+
+    static PrecomputedMoveData()
+    {
+        for (int file = 0; file < 8; file++)
+        {
+            for (int rank = 0; rank < 8; rank++)
+            {
+                int numNorth = 7 - rank;
+                int numSouth = rank;
+                int numWest = file;
+                int numEast = 7 - file;
+
+                int squareIndex = rank * 8 + file;
+
+                int[] squaresInfo = 
+                { 
+                    numNorth, numSouth, numWest, numEast, 
+                    Mathf.Min(numNorth, numWest), Mathf.Min(numSouth, numEast), Mathf.Min(numNorth, numEast), Mathf.Min(numSouth, numWest) 
+                };
+                numSquaresToEdge[squareIndex] = squaresInfo;
+            }
+        }    
     }
 }
 
