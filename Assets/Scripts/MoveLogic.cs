@@ -11,14 +11,17 @@ public enum PieceColor { None = -1, White = 0, Black = 8}
 
 public class MoveLogic : MonoBehaviour
 {
-    private int[,] _board = new int[8, 8];
-    private Dictionary<Vector2, GameObject> _pieces = new();
+    private readonly int[,] _board = new int[8, 8];
+    private readonly Dictionary<Vector2, Piece> _pieces = new();
     
     [Header("Main parameters")]
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     private Piece _heldPiece;
     private Move _heldPieceMove;
+    private List<Move> _heldPieceLegalMoves = new();
+    
+    private Pawn _heldPawn; // Used to calculate en-passant 
 
     [Header("References")]
     [SerializeField] private GameObject _piecePrefab;
@@ -28,7 +31,7 @@ public class MoveLogic : MonoBehaviour
     [Header("Debug")] 
     [SerializeField] private bool _debugLegalMoves;
     [SerializeField] private GameObject _squareHighlighterPrefab;
-    private List<GameObject> _squareHighlighters = new();
+    private readonly List<GameObject> _squareHighlighters = new();
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -66,17 +69,18 @@ public class MoveLogic : MonoBehaviour
             if (!IsInsideBounds(mouseWorldPos)) return;
             
             Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
-            if (_pieces.TryGetValue(snappedWholePos, out GameObject pieceObject))
+            if (_pieces.TryGetValue(snappedWholePos, out Piece pieceToDrag))
             {
-                _heldPiece = GetPieceFromRaycast(pieceObject);
+                _heldPiece = GetPieceFromGameObject(pieceToDrag.go);
                 _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
                 _heldPieceMove = new()
                 {
                     startSquare = snappedWholePos
                 };
+                _heldPieceLegalMoves = _heldPiece.GetLegalMoves(snappedWholePos);
                 
                 // Show legal moves in debug
-                if (_debugLegalMoves) ShowLegalMoves(_heldPiece, snappedWholePos);
+                if (_debugLegalMoves) ShowLegalMoves();
             }
         }
         else if (context.canceled) // Stop piece drag
@@ -85,17 +89,25 @@ public class MoveLogic : MonoBehaviour
             snappedPos = ClampPieceBoardPos(snappedPos);
             _heldPieceMove.endSquare = Vector2Int.RoundToInt(snappedPos);
 
-            if (CheckForLegalMove(_heldPiece, _heldPieceMove))
-                MakeMove(_heldPiece.go, _heldPieceMove);
+            if (CheckForLegalMove(_heldPieceMove))
+                MakeMove(_heldPiece, _heldPieceMove);
             else _heldPiece.go.transform.position = BoardToWorld(_heldPieceMove.startSquare);
+            
+            // Remove option to en-passant pawns
+            if (_heldPiece.GetType() == typeof(Pawn))
+            {
+                _heldPawn = (Pawn)_heldPiece;
+                _heldPawn.doubleMovedLastTurn = false;
+            }
             
             if (_debugLegalMoves) HideLegalMoves();
             _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
             _heldPiece = null;
+            
         }
     }
 
-    Piece GetPieceFromRaycast(GameObject pieceObject)
+    Piece GetPieceFromGameObject(GameObject pieceObject)
     {
         // Get corresponding data of released piece
         Sprite sprite = pieceObject.GetComponent<SpriteRenderer>().sprite;
@@ -114,10 +126,10 @@ public class MoveLogic : MonoBehaviour
         switch (data.type)
         {
             case PieceType.Pawn:
-                newPiece = new Pawn(data, pieceObject);
+                newPiece = new Pawn(data, pieceObject, this);
                 break;
             case PieceType.Knight:
-                newPiece = new Knight(data, pieceObject);
+                newPiece = new Knight(data, pieceObject, this);
                 break;
             case PieceType.Bishop:
                 newPiece = new Bishop(data, pieceObject);
@@ -129,22 +141,22 @@ public class MoveLogic : MonoBehaviour
                 newPiece = new Queen(data, pieceObject);
                 break;
             case PieceType.King:
-                newPiece = new King(data, pieceObject);
+                newPiece = new King(data, pieceObject, this);
                 break;
         }
                 
         return newPiece;
     }
 
-    bool CheckForLegalMove(Piece piece, Move move)
+    bool CheckForLegalMove(Move move)
     {
-        return piece.GetLegalMoves(move.startSquare).Contains(move);
+        return _heldPieceLegalMoves.Contains(move);
     }
 
-    void ShowLegalMoves(Piece piece, Vector2 initialPos)
+    void ShowLegalMoves()
     {
         HideLegalMoves();
-        foreach (Move move in piece.GetLegalMoves(initialPos))
+        foreach (Move move in _heldPieceLegalMoves)
         {
             GameObject go = Instantiate(_squareHighlighterPrefab, BoardToWorld(move.endSquare), Quaternion.identity, transform);
             _squareHighlighters.Add(go);
@@ -170,9 +182,9 @@ public class MoveLogic : MonoBehaviour
         return _board[square.y, square.x];
     }
 
-    void MakeMove(GameObject piece, Move move)
+    void MakeMove(Piece piece, Move move)
     {
-        PieceData data = GetPieceData(piece.GetComponent<SpriteRenderer>().sprite);
+        PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
         
         _board[move.startSquare.y, move.startSquare.x] = 0;
@@ -180,44 +192,47 @@ public class MoveLogic : MonoBehaviour
 
         _pieces.Remove(move.startSquare);
         // If target pos is taken by other piece, kill it
-        if (_pieces.TryGetValue(move.endSquare, out GameObject objectToDestroy) == piece)
+        if (_pieces.TryGetValue(move.endSquare, out Piece pieceToDestroy) == piece.go)
         {
-            Destroy(_pieces[move.endSquare]);
+            Destroy(_pieces[move.endSquare].go);
             _pieces.Remove(move.endSquare);
         }
             
         _pieces.Add(move.endSquare, piece);
         
-        piece.transform.position = BoardToWorld(move.endSquare);
-    }
+        piece.go.transform.position = BoardToWorld(move.endSquare);
+        
+        // If piece is pawn, prevent it from being captured with en-passant
+        // if (piece.pieceData.type == PieceType.Pawn)
+        //     Debug.Log("subclass of pawn is " + ((Pawn)piece.GetType()).doubleMovedLastTurn = false);
 
-    // Vector2Int FindPiece(PieceType id, PieceColor color)
-    // {
-    //     for (int col = 0; col < 8; col++)
-    //     {
-    //         for (int row = 0; row < 8; row++)
-    //         {
-    //             if (_board[row, col] == (int)id + (int)color)
-    //                 return new Vector2Int(row, col);
-    //         }
-    //     }
-    //     return -Vector2Int.one;
-    // }
+    }
 
     void SpawnPiece(PieceData piece,  Vector2Int pos)
     {
         Vector2 worldPos = BoardToWorld(pos);
-        GameObject newPiece = Instantiate(_piecePrefab, worldPos, Quaternion.identity, transform);
-        newPiece.name = piece.type.ToString();
+        GameObject newGo = Instantiate(_piecePrefab, worldPos, Quaternion.identity, transform);
+        newGo.name = piece.type.ToString();
 
         PieceData pieceData = GetPieceData(piece);
-        newPiece.GetComponent<SpriteRenderer>().sprite = pieceData.sprite;
+        newGo.GetComponent<SpriteRenderer>().sprite = pieceData.sprite;
 
         if (_pieces.ContainsKey(pos))
         {
-            Destroy(_pieces[pos]);
+            Destroy(_pieces[pos].go);
             _pieces.Remove(pos);
         }
+        
+        // Track unmoved pawns for en-passant
+        // if (pieceData.type == PieceType.Pawn)
+        // {
+        //     Pawn newPawn = new(pieceData, newGo, this);
+        //     _doubleMovedPawns.Add(newPawn, false);
+        //     _pieces.Add(pos, newPawn);
+        //     return;
+        // }
+
+        Piece newPiece = GetPieceFromGameObject(newGo);
         _pieces.Add(pos, newPiece);
     }
 
@@ -321,108 +336,6 @@ public class MoveLogic : MonoBehaviour
             msg += "\n";
         }
         Debug.Log(msg);
-    }
-
-    [Button]
-    void PrintPieces()
-    {
-        // string msg = "";
-        // Debug.Log($"there are {_pieces.Count} pieces");
-        // foreach (Vector2 pos in _pieces.Keys)
-        // {
-        //     msg += 
-        // }
-    }
-}
-
-public class PrecomputedMoveData
-{
-    public enum Directions { Right, Up, Left, Down, UpRight, UpLeft, DownLeft, DownRight}
-    public static readonly Vector2Int[] directionOffsets = 
-    {
-        Vector2Int.right, Vector2Int.up, Vector2Int.left, Vector2Int.down,
-        new Vector2Int(1, 1), new Vector2Int(-1, 1), new Vector2Int(-1, -1), new Vector2Int(1, -1) 
-    };
-    public static readonly int[,,] numSquaresToEdges = new int[8, 8, 8];
-
-    private static MoveLogic _moveLogic;
-
-    /// <summary>
-    /// Precomputes, for each square, how much distance there is with the edge of the board, in all directions.
-    /// Allows for incredible performance optimization for sliding pieces (bishops/rooks/queens) instead of recalculating each time.
-    /// </summary>
-    public PrecomputedMoveData(MoveLogic moveLogic)
-    {
-        _moveLogic = moveLogic;
-        for (int file = 0; file < 8; file++)
-        {
-            for (int rank = 0; rank < 8; rank++)
-            {
-                int numNorth = 7 - rank;
-                int numSouth = rank;
-                int numWest = file;
-                int numEast = 7 - file;
-                
-                int[] squaresInfo = 
-                { 
-                    numEast, numNorth, numWest, numSouth,
-                    Mathf.Min(numNorth, numEast), Mathf.Min(numNorth, numWest), Mathf.Min(numSouth, numWest), Mathf.Min(numSouth, numEast)
-                };
-                for (int i = 0; i < 8; i++)
-                {
-                    numSquaresToEdges[file, rank, i] = squaresInfo[i];
-                }
-            }
-        }    
-    }
-
-    public static List<Move> GenerateSlidingMoves(Piece piece, Vector2 startPosWorld)
-    {
-        List<Move> moves = new List<Move>();
-        Vector2Int startPos = Vector2Int.RoundToInt(startPosWorld);
-
-        int startDirIndex = piece.pieceData.type == PieceType.Bishop ? 4 : 0;
-        int endDirIndex = piece.pieceData.type == PieceType.Rook ? 4 : 8;
-        
-        for (int directionIndex = startDirIndex; directionIndex < endDirIndex; directionIndex++)
-        {
-            //Debug.Log($"indices for num squares to edges: {startPos.x}, {startPos.y}, {directionIndex}");
-            for (int n = 0; n < numSquaresToEdges[startPos.x, startPos.y, directionIndex]; n++)
-            {
-                Vector2Int targetSquare = startPos + directionOffsets[directionIndex] * (n + 1);
-                int pieceOnTargetSquare = _moveLogic.GetSquare(targetSquare);
-
-                PieceColor friendlyColor = piece.pieceData.color;
-                PieceColor enemyColor = friendlyColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
-                PieceColor targetSquareColor = pieceOnTargetSquare > 8 ? PieceColor.Black : pieceOnTargetSquare != 0 ? PieceColor.White : PieceColor.None;
-                
-                //Debug.Log($"friendly color is {friendlyColor.ToString()}, target square color is {targetSquareColor.ToString()}");
-                
-                // Blocked by friendly piece, can't move any further in that direction
-                if (friendlyColor == targetSquareColor)
-                    break;
-                
-                Move move = new Move
-                {
-                    startSquare = startPos,
-                    endSquare = targetSquare
-                };
-                moves.Add(move);
-
-                // Can't move any further in this direction after capturing opponent's piece
-                if (enemyColor == targetSquareColor)
-                    break;
-            }
-        }
-
-        return moves;
-    }
-    
-    static Vector2 WorldToBoard(Vector2 pos)
-    {
-        Vector2 snappedPos = new Vector2(pos.x > 0 ? (int)pos.x + 1 : (int)pos.x, pos.y > 0 ? (int)pos.y + 1 : (int)pos.y);
-        Debug.Log("snapped pos in world is " +  snappedPos);
-        return snappedPos + Vector2Int.RoundToInt(_moveLogic.transform.position) + Vector2Int.one * 3; // Offset due to pivot point being in center of the board
     }
 }
 

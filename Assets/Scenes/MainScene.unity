@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39a20bacbf60fe0458b54ea107560ba5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveLogic
-  _basePositionFen: 8/3r4/1q3b2/2B5/4R3/1Q6/8/8 w - - 0 1
+  _basePositionFen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
   _piecePrefab: {fileID: 1194715645466863060, guid: 8eb0796d5921c6144b0e88729c7045f2, type: 3}
   _piecesData:
   - {fileID: 11400000, guid: 2a37466a4cfc1b54baf4845b24f00492, type: 2}

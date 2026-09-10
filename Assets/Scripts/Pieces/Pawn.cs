@@ -5,17 +5,80 @@ namespace Pieces
 {
     public class Pawn : Piece
     {
-        public Pawn(PieceData pieceData, GameObject go)
+        public bool doubleMovedLastTurn;
+        private MoveLogic _moveLogic;
+        
+        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic)
         {
             this.pieceData = pieceData;
             this.go = go;
+            _moveLogic = moveLogic;
         }
     
         public override List<Move> GetLegalMoves(Vector2 initialPos)
         {
             List<Move> moves = new();
+            Vector2Int snappedPos = Vector2Int.RoundToInt(initialPos);
+            
+            // Forward step
+            Vector2 forwardDir = pieceData.color == PieceColor.White ? Vector2.up : Vector2.down;
+            Vector2Int forwardSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir);
+            CheckSingleMove(forwardSquarePos, ref moves, initialPos, false);
+            
+            // Double forward (if pawn hasn't moved yet)
+            int startingRank = pieceData.color == PieceColor.White ? 1 : 6;
+            if (snappedPos.y == startingRank)
+            {
+                Vector2Int doubleForwardSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir * 2);
+                if (CheckSingleMove(doubleForwardSquarePos, ref moves, initialPos, false))
+                    doubleMovedLastTurn = true;
+            }
+            
+            // Up-left and right-left (if there's an enemy piece)
+            Vector2Int takeLeftSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir + Vector2.left);
+            Vector2Int takeRightSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir + Vector2.right);
+            CheckSingleMove(takeLeftSquarePos, ref moves, initialPos, true);
+            CheckSingleMove(takeRightSquarePos, ref moves, initialPos, true);
+            
+            // En passant
+            int enPassantTakeRank = pieceData.color == PieceColor.White ? 5 : 2;
+            int enPassantCapturedRank = pieceData.color == PieceColor.White ? 4 : 3;
 
             return moves;
+        }
+
+        bool CheckSingleMove(Vector2Int targetSquarePos, ref List<Move> moves, Vector2 startPos, bool haveToTake)
+        {
+            if (!IsInsideBounds(targetSquarePos)) return false;
+            
+            // Exclude move if square has friendly piece
+            int targetSquare = _moveLogic.GetSquare(targetSquarePos);
+
+            if (haveToTake)
+            {
+                PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
+                    targetSquare > 0 ? PieceColor.White : PieceColor.None;
+                if (pieceData.color == targetColor || targetColor == PieceColor.None)
+                    return false;
+            }
+            else
+            {
+                if (targetSquare != 0)
+                    return false;
+            }
+
+
+            moves.Add(new Move
+            {
+                startSquare = Vector2Int.RoundToInt(startPos),
+                endSquare = targetSquarePos,
+            });
+            return true;
+        }
+        
+        bool IsInsideBounds(Vector2 pos)
+        {
+            return pos is { x: >= 0 and < 8, y: >= 0 and < 8 };
         }
     }
 }
