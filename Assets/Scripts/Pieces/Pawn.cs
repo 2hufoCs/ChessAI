@@ -5,14 +5,18 @@ namespace Pieces
 {
     public class Pawn : Piece
     {
+        public bool disableEnPassantNextTurn;
         public bool doubleMovedLastTurn;
-        private MoveLogic _moveLogic;
         
-        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic)
+        private MoveLogic _moveLogic;
+        private Dictionary<Vector2, Piece> _pieces = new();
+        
+        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2, Piece> pieces)
         {
             this.pieceData = pieceData;
             this.go = go;
             _moveLogic = moveLogic;
+            _pieces = pieces;
         }
     
         public override List<Move> GetLegalMoves(Vector2 initialPos)
@@ -41,9 +45,34 @@ namespace Pieces
             CheckSingleMove(takeRightSquarePos, ref moves, initialPos, true);
             
             // En passant
-            int enPassantTakeRank = pieceData.color == PieceColor.White ? 5 : 2;
-            int enPassantCapturedRank = pieceData.color == PieceColor.White ? 4 : 3;
+            int enPassantRank = pieceData.color == PieceColor.White ? 4 : 3;
+            if (snappedPos.y != enPassantRank) return moves;
 
+            Pawn leftPawn = GetPawn(snappedPos + Vector2Int.left);
+            Pawn rightPawn = GetPawn(snappedPos + Vector2Int.right);
+            if (leftPawn == null && rightPawn == null) return moves;
+
+            // Left en passant
+            if (leftPawn != null)
+            {
+                if (leftPawn.doubleMovedLastTurn)
+                {
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = leftPawn.go};
+                    //Debug.Log("can make en passant, go to kill would be " + newMove.enPassantCapture);
+                    moves.Add(newMove);
+                }
+            }
+            
+            // Right en passant
+            if (rightPawn != null)
+            {
+                if (rightPawn.doubleMovedLastTurn)
+                {
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = rightPawn.go};
+                    moves.Add(newMove);
+                }
+            }
+            
             return moves;
         }
 
@@ -74,6 +103,16 @@ namespace Pieces
                 endSquare = targetSquarePos,
             });
             return true;
+        }
+
+        Pawn GetPawn(Vector2Int pos)
+        {
+            if (!IsInsideBounds(pos)) return null;
+
+            int square = _moveLogic.GetSquare(pos);
+            if (square is (int)PieceType.Pawn + (int)PieceColor.White or (int)PieceType.Pawn + (int)PieceColor.Black)
+                return (Pawn)_pieces[pos];
+            return null;
         }
         
         bool IsInsideBounds(Vector2 pos)

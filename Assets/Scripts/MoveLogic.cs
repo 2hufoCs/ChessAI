@@ -18,7 +18,7 @@ public class MoveLogic : MonoBehaviour
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     private Piece _heldPiece;
-    private Move _heldPieceMove;
+    private Vector2Int _heldPieceStartSquare;
     private List<Move> _heldPieceLegalMoves = new();
     
     private Pawn _heldPawn; // Used to calculate en-passant 
@@ -73,10 +73,8 @@ public class MoveLogic : MonoBehaviour
             {
                 _heldPiece = GetPieceFromGameObject(pieceToDrag.go);
                 _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
-                _heldPieceMove = new()
-                {
-                    startSquare = snappedWholePos
-                };
+                _heldPieceStartSquare = snappedWholePos;
+                
                 _heldPieceLegalMoves = _heldPiece.GetLegalMoves(snappedWholePos);
                 
                 // Show legal moves in debug
@@ -87,18 +85,11 @@ public class MoveLogic : MonoBehaviour
         {
             if (_heldPiece == null) return;
             snappedPos = ClampPieceBoardPos(snappedPos);
-            _heldPieceMove.endSquare = Vector2Int.RoundToInt(snappedPos);
 
-            if (CheckForLegalMove(_heldPieceMove))
-                MakeMove(_heldPiece, _heldPieceMove);
-            else _heldPiece.go.transform.position = BoardToWorld(_heldPieceMove.startSquare);
-            
-            // Remove option to en-passant pawns
-            if (_heldPiece.GetType() == typeof(Pawn))
-            {
-                _heldPawn = (Pawn)_heldPiece;
-                _heldPawn.doubleMovedLastTurn = false;
-            }
+            Move moveToPlay = FindLegalMove(Vector2Int.RoundToInt(snappedPos));
+            if (moveToPlay.endSquare != -Vector2Int.one)
+                MakeMove(_heldPiece, moveToPlay);
+            else _heldPiece.go.transform.position = BoardToWorld(_heldPieceStartSquare);
             
             if (_debugLegalMoves) HideLegalMoves();
             _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
@@ -126,7 +117,7 @@ public class MoveLogic : MonoBehaviour
         switch (data.type)
         {
             case PieceType.Pawn:
-                newPiece = new Pawn(data, pieceObject, this);
+                newPiece = new Pawn(data, pieceObject, this, _pieces);
                 break;
             case PieceType.Knight:
                 newPiece = new Knight(data, pieceObject, this);
@@ -171,6 +162,16 @@ public class MoveLogic : MonoBehaviour
         _squareHighlighters.Clear();
     }
 
+    Move FindLegalMove(Vector2Int endSquare)
+    {
+        foreach (Move move in _heldPieceLegalMoves)
+        {
+            if (move.endSquare == endSquare)
+                return move;
+        }
+        return new Move { endSquare = -Vector2Int.one };
+    }
+
     /// <summary>
     /// Read from the _board array at the given square.
     /// </summary>
@@ -194,8 +195,30 @@ public class MoveLogic : MonoBehaviour
         // If target pos is taken by other piece, kill it
         if (_pieces.TryGetValue(move.endSquare, out Piece pieceToDestroy) == piece.go)
         {
-            Destroy(_pieces[move.endSquare].go);
-            _pieces.Remove(move.endSquare);
+            if (pieceToDestroy != piece)
+            {
+                Destroy(_pieces[move.endSquare].go);
+                _pieces.Remove(move.endSquare);
+            }
+        }
+
+        // Destroy piece when en-passant
+        GameObject pawnToDestroy = move.enPassantCapture;
+        if (pawnToDestroy != null)
+        {
+            _pieces.Remove(WorldToBoard(pawnToDestroy.transform.position));
+            int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
+            _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
+            Destroy(move.enPassantCapture);
+        }
+        
+        // Remove option to en-passant pawns
+        if (piece.GetType() == typeof(Pawn))
+        {
+            _heldPawn = (Pawn)_heldPiece;
+            if (_heldPawn.disableEnPassantNextTurn)
+                _heldPawn.doubleMovedLastTurn = false;
+            else _heldPawn.disableEnPassantNextTurn = true;
         }
             
         _pieces.Add(move.endSquare, piece);
@@ -219,6 +242,7 @@ public class MoveLogic : MonoBehaviour
 
         if (_pieces.ContainsKey(pos))
         {
+            Debug.Log("destroying piece as it's spawned");
             Destroy(_pieces[pos].go);
             _pieces.Remove(pos);
         }
@@ -343,6 +367,7 @@ public struct Move : IEquatable<Move>
 {
     public Vector2Int startSquare;
     public Vector2Int endSquare;
+    public GameObject enPassantCapture; // When taking a piece using en passant
 
     public bool Equals(Move other)
     {

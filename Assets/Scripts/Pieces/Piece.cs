@@ -8,6 +8,7 @@ public abstract class Piece
     public GameObject go;
 
     public abstract List<Move> GetLegalMoves(Vector2 initialPos);
+
 }
 
 
