@@ -19,42 +19,39 @@ public class MoveLogic : MonoBehaviour
     [Header("Main parameters")]
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
-    private Piece _heldPiece;
-    private Vector2Int _heldPieceStartSquare;
-    private List<Move> _heldPieceLegalMoves = new();
-    
     private Pawn _heldPawn; // Used to calculate en-passant 
 
     [Header("References")]
     [SerializeField] private GameObject _piecePrefab;
     [SerializeField] private List<PieceData> _piecesData = new ();
     [SerializeField] private LayerMask _pieceLayer;
+    private LegalMoveLogic _legalLogic;
 
     [Header("Debug")] 
     [SerializeField] private bool _debugLegalMoves;
-    [SerializeField] private GameObject _squareHighlighterPrefab;
-    private readonly List<GameObject> _squareHighlighters = new();
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        _legalLogic = LegalMoveLogic.Instance;
         LoadPositionFromFen(_basePositionFen);
         PrecomputedMoveData precomputedMoves = new(this);
     }
 
     void Update()
     {
-        if (_heldPiece != null)
-            _heldPiece.go.transform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        if (_legalLogic.heldPiece != null)
+            _legalLogic.heldPiece.go.transform.position = (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
     }
 
     public void OnClick(InputAction.CallbackContext context)
     {
-        DragAndDropLogic(context);
+        StateMachine(context);
     }
 
-    void DragAndDropLogic(InputAction.CallbackContext context)
+    void StateMachine(InputAction.CallbackContext context)
     {
+        // State 1 - None
         if (!context.performed && !context.canceled) return;
         
         Vector3 mouseScreenPos =  Input.mousePosition;
@@ -62,135 +59,33 @@ public class MoveLogic : MonoBehaviour
 
         Collider2D hit = Physics2D.OverlapCircle(mouseWorldPos, .01f);
         Vector2 snappedPos = WorldToBoard(mouseWorldPos);
+        Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
         
-        if (context.performed) // Start piece drag
+        // State 2 - dragging piece
+        if (context.performed) 
         {
-            if (!hit)
-                return;
-
-            if (!IsInsideBounds(mouseWorldPos)) return;
-            
-            Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
-            if (_pieces.TryGetValue(snappedWholePos, out Piece pieceToDrag))
+            Piece pieceToDrag = TryDragPiece(hit, mouseWorldPos, snappedWholePos);
+            if (pieceToDrag != null)
             {
                 if (pieceToDrag.pieceData.color != _colorToPlay) return;
-                
-                _heldPiece = GetPieceFromGameObject(pieceToDrag.go);
-                _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
-                _heldPieceStartSquare = snappedWholePos;
-                
-                _heldPieceLegalMoves = _heldPiece.GetLegalMoves(snappedWholePos);
-                
-                // Show legal moves in debug
-                if (_debugLegalMoves) ShowLegalMoves();
+                InitializeDraggedPiece(pieceToDrag, snappedWholePos);
+                if (_debugLegalMoves) LegalMoveLogic.Instance.ShowLegalMoves();
             }
         }
-        else if (context.canceled) // Stop piece drag
+        // State 3 - dropping piece
+        else if (context.canceled) 
         {
-            if (_heldPiece == null) return;
-            snappedPos = ClampPieceBoardPos(snappedPos);
+            if (_legalLogic.heldPiece == null) return;
 
-            Move moveToPlay = FindLegalMove(Vector2Int.RoundToInt(snappedPos));
+            Move moveToPlay = _legalLogic.FindLegalMove(snappedWholePos);
             if (moveToPlay.endSquare != -Vector2Int.one)
-                MakeMove(_heldPiece, moveToPlay);
-            else _heldPiece.go.transform.position = BoardToWorld(_heldPieceStartSquare);
+                MakeMove(_legalLogic.heldPiece, moveToPlay);
+            else _legalLogic.heldPiece.go.transform.position = BoardToWorld(_legalLogic.heldPieceStartSquare);
             
-            if (_debugLegalMoves) HideLegalMoves();
-            _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
-            _heldPiece = null;
-            
+            if (_debugLegalMoves) _legalLogic.HideLegalMoves();
+            _legalLogic.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
+            _legalLogic.heldPiece = null;
         }
-    }
-
-    Piece GetPieceFromGameObject(GameObject pieceObject)
-    {
-        // Get corresponding data of released piece
-        Sprite sprite = pieceObject.GetComponent<SpriteRenderer>().sprite;
-        PieceData data = _piecesData[0];
-        foreach (PieceData pieceData in _piecesData)
-        {
-            if (pieceData.sprite == sprite)
-            {
-                data = pieceData;
-                break;
-            }
-        }
-                
-        // Create a new piece with obtained data
-        Piece newPiece = null;
-        switch (data.type)
-        {
-            case PieceType.Pawn:
-                newPiece = new Pawn(data, pieceObject, this, _pieces);
-                break;
-            case PieceType.Knight:
-                newPiece = new Knight(data, pieceObject, this);
-                break;
-            case PieceType.Bishop:
-                newPiece = new Bishop(data, pieceObject);
-                break;
-            case PieceType.Rook:
-                newPiece = new Rook(data, pieceObject);
-                break;
-            case PieceType.Queen:
-                newPiece = new Queen(data, pieceObject);
-                break;
-            case PieceType.King:
-                newPiece = new King(data, pieceObject, this, GetRooks(data.color));
-                break;
-        }
-                
-        return newPiece;
-    }
-
-    Dictionary<Vector2, Rook> GetRooks(PieceColor color)
-    {
-        Dictionary<Vector2, Rook> result = new Dictionary<Vector2, Rook>();
-        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
-        {
-            if (piece.Value.pieceData.type == PieceType.Rook && piece.Value.pieceData.color == color)
-                result.Add(piece.Key, (Rook)piece.Value);
-        }
-        return result;
-    }
-
-    void ShowLegalMoves()
-    {
-        HideLegalMoves();
-        foreach (Move move in _heldPieceLegalMoves)
-        {
-            GameObject go = Instantiate(_squareHighlighterPrefab, BoardToWorld(move.endSquare), Quaternion.identity, transform);
-            _squareHighlighters.Add(go);
-        }
-    }
-
-    void HideLegalMoves()
-    {
-        // Destroy previous square highlighters
-        foreach (GameObject go in _squareHighlighters)
-            Destroy(go);
-        _squareHighlighters.Clear();
-    }
-
-    Move FindLegalMove(Vector2Int endSquare)
-    {
-        foreach (Move move in _heldPieceLegalMoves)
-        {
-            if (move.endSquare == endSquare)
-                return move;
-        }
-        return new Move { endSquare = -Vector2Int.one };
-    }
-
-    /// <summary>
-    /// Read from the _board array at the given square.
-    /// </summary>
-    /// <param name="square">The position in board space of the needed square.</param>
-    /// <returns></returns>
-    public int GetSquare(Vector2Int square)
-    {
-        if (square.x < 0 || square.y < 0 || square.x > 7 || square.y > 7) return -1;
-        return _board[square.y, square.x];
     }
 
     void MakeMove(Piece piece, Move move)
@@ -259,11 +154,43 @@ public class MoveLogic : MonoBehaviour
         // Remove option to en-passant pawns
         if (piece.GetType() == typeof(Pawn))
         {
-            _heldPawn = (Pawn)_heldPiece;
+            _heldPawn = (Pawn)_legalLogic.heldPiece;
             if (_heldPawn.disableEnPassantNextTurn)
                 _heldPawn.doubleMovedLastTurn = false;
             else _heldPawn.disableEnPassantNextTurn = true;
         }
+    }
+    
+    Piece TryDragPiece(Collider2D hit, Vector2 mouseWorldPos, Vector2 snappedWholePos)
+    {
+        if (!hit)
+            return null;
+
+        if (!IsInsideBounds(mouseWorldPos)) return null;
+        
+        if (_pieces.TryGetValue(snappedWholePos, out Piece pieceToDrag))
+            return pieceToDrag;
+        return null;
+    }
+
+    void InitializeDraggedPiece(Piece pieceToDrag, Vector2Int snappedWholePos)
+    {
+        _legalLogic.heldPiece = GetPieceFromGameObject(pieceToDrag.go);
+        _legalLogic.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
+        _legalLogic.heldPieceStartSquare = snappedWholePos;
+                
+        _legalLogic.heldPieceLegalMoves = _legalLogic.heldPiece.GetLegalMoves(snappedWholePos);
+    }
+    
+    /// <summary>
+    /// Read from the _board array at the given square.
+    /// </summary>
+    /// <param name="square">The position in board space of the needed square.</param>
+    /// <returns></returns>
+    public int GetSquare(Vector2Int square)
+    {
+        if (square.x < 0 || square.y < 0 || square.x > 7 || square.y > 7) return -1;
+        return _board[square.y, square.x];
     }
 
     void SpawnPiece(PieceData piece,  Vector2Int pos)
@@ -281,18 +208,61 @@ public class MoveLogic : MonoBehaviour
             Destroy(_pieces[pos].go);
             _pieces.Remove(pos);
         }
-        
-        // Track unmoved pawns for en-passant
-        // if (pieceData.type == PieceType.Pawn)
-        // {
-        //     Pawn newPawn = new(pieceData, newGo, this);
-        //     _doubleMovedPawns.Add(newPawn, false);
-        //     _pieces.Add(pos, newPawn);
-        //     return;
-        // }
 
         Piece newPiece = GetPieceFromGameObject(newGo);
         _pieces.Add(pos, newPiece);
+    }
+    
+    Piece GetPieceFromGameObject(GameObject pieceObject)
+    {
+        // Get corresponding data of released piece
+        Sprite sprite = pieceObject.GetComponent<SpriteRenderer>().sprite;
+        PieceData data = _piecesData[0];
+        foreach (PieceData pieceData in _piecesData)
+        {
+            if (pieceData.sprite == sprite)
+            {
+                data = pieceData;
+                break;
+            }
+        }
+                
+        // Create a new piece with obtained data
+        Piece newPiece = null;
+        switch (data.type)
+        {
+            case PieceType.Pawn:
+                newPiece = new Pawn(data, pieceObject, this, _pieces);
+                break;
+            case PieceType.Knight:
+                newPiece = new Knight(data, pieceObject, this);
+                break;
+            case PieceType.Bishop:
+                newPiece = new Bishop(data, pieceObject);
+                break;
+            case PieceType.Rook:
+                newPiece = new Rook(data, pieceObject);
+                break;
+            case PieceType.Queen:
+                newPiece = new Queen(data, pieceObject);
+                break;
+            case PieceType.King:
+                newPiece = new King(data, pieceObject, this, GetRooks(data.color));
+                break;
+        }
+                
+        return newPiece;
+    }
+
+    Dictionary<Vector2, Rook> GetRooks(PieceColor color)
+    {
+        Dictionary<Vector2, Rook> result = new Dictionary<Vector2, Rook>();
+        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        {
+            if (piece.Value.pieceData.type == PieceType.Rook && piece.Value.pieceData.color == color)
+                result.Add(piece.Key, (Rook)piece.Value);
+        }
+        return result;
     }
 
     PieceData GetPieceData(PieceData piece)

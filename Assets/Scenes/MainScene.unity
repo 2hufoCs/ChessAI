@@ -164,6 +164,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39a20bacbf60fe0458b54ea107560ba5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveLogic
+  _colorToPlay: 0
   _basePositionFen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
   _piecePrefab: {fileID: 1194715645466863060, guid: 8eb0796d5921c6144b0e88729c7045f2, type: 3}
   _piecesData:
@@ -266,7 +267,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.31334537, g: 0.29592383, b: 0.3584906, a: 0}
+  m_BackGroundColor: {r: 0.19758147, g: 0.18431373, b: 0.23137255, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
