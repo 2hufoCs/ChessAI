@@ -11,9 +11,9 @@ namespace Pieces
             this.go = go;
         }
     
-        public override List<Move> GetLegalMoves()
+        public override List<Move> GetLegalMoves(Vector2 initialPos)
         {
-            List<Move> moves = PrecomputedMoveData.GenerateSlidingMoves(this);
+            List<Move> moves = PrecomputedMoveData.GenerateSlidingMoves(this, initialPos);
             return moves;
         }
     }

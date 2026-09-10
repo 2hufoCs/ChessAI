@@ -7,7 +7,7 @@ using NaughtyAttributes;
 using Pieces;
 
 public enum PieceType { None, Pawn, Knight, Bishop, Rook, Queen, King }
-public enum PieceColor { White = 0, Black = 8}
+public enum PieceColor { None = -1, White = 0, Black = 8}
 
 public class MoveLogic : MonoBehaviour
 {
@@ -45,6 +45,11 @@ public class MoveLogic : MonoBehaviour
 
     public void OnClick(InputAction.CallbackContext context)
     {
+        DragAndDropLogic(context);
+    }
+
+    void DragAndDropLogic(InputAction.CallbackContext context)
+    {
         if (!context.performed && !context.canceled) return;
         
         Vector3 mouseScreenPos =  Input.mousePosition;
@@ -71,23 +76,22 @@ public class MoveLogic : MonoBehaviour
                 };
                 
                 // Show legal moves in debug
-                if (_debugLegalMoves)
-                    ShowLegalMoves(_heldPiece);
+                if (_debugLegalMoves) ShowLegalMoves(_heldPiece, snappedWholePos);
             }
         }
         else if (context.canceled) // Stop piece drag
         {
-            if (_heldPiece != null) return;
+            if (_heldPiece == null) return;
             snappedPos = ClampPieceBoardPos(snappedPos);
             _heldPieceMove.endSquare = Vector2Int.RoundToInt(snappedPos);
 
             if (CheckForLegalMove(_heldPiece, _heldPieceMove))
-            {
                 MakeMove(_heldPiece.go, _heldPieceMove);
+            else _heldPiece.go.transform.position = BoardToWorld(_heldPieceMove.startSquare);
             
-                _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
-                _heldPiece = null;
-            }
+            if (_debugLegalMoves) HideLegalMoves();
+            _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
+            _heldPiece = null;
         }
     }
 
@@ -134,21 +138,25 @@ public class MoveLogic : MonoBehaviour
 
     bool CheckForLegalMove(Piece piece, Move move)
     {
-        return piece.GetLegalMoves().Contains(move);
+        return piece.GetLegalMoves(move.startSquare).Contains(move);
     }
 
-    void ShowLegalMoves(Piece piece)
+    void ShowLegalMoves(Piece piece, Vector2 initialPos)
+    {
+        HideLegalMoves();
+        foreach (Move move in piece.GetLegalMoves(initialPos))
+        {
+            GameObject go = Instantiate(_squareHighlighterPrefab, BoardToWorld(move.endSquare), Quaternion.identity, transform);
+            _squareHighlighters.Add(go);
+        }
+    }
+
+    void HideLegalMoves()
     {
         // Destroy previous square highlighters
         foreach (GameObject go in _squareHighlighters)
             Destroy(go);
         _squareHighlighters.Clear();
-        
-        foreach (Move move in piece.GetLegalMoves())
-        {
-            GameObject go = Instantiate(_squareHighlighterPrefab, BoardToWorld(move.endSquare), Quaternion.identity, transform);
-            _squareHighlighters.Add(go);
-        }
     }
 
     /// <summary>
@@ -207,7 +215,6 @@ public class MoveLogic : MonoBehaviour
 
         if (_pieces.ContainsKey(pos))
         {
-            Debug.Log("overriding square with existing piece");
             Destroy(_pieces[pos]);
             _pieces.Remove(pos);
         }
@@ -369,24 +376,30 @@ public class PrecomputedMoveData
         }    
     }
 
-    public static List<Move> GenerateSlidingMoves(Piece piece)
+    public static List<Move> GenerateSlidingMoves(Piece piece, Vector2 startPosWorld)
     {
         List<Move> moves = new List<Move>();
-        Vector2Int startPos = WorldToBoard(piece);
+        Vector2Int startPos = Vector2Int.RoundToInt(startPosWorld);
+
+        int startDirIndex = piece.pieceData.type == PieceType.Bishop ? 4 : 0;
+        int endDirIndex = piece.pieceData.type == PieceType.Rook ? 4 : 8;
         
-        for (int directionIndex = 0; directionIndex < 8; directionIndex++)
+        for (int directionIndex = startDirIndex; directionIndex < endDirIndex; directionIndex++)
         {
-            Debug.Log($"indices for num squares to edges: {startPos.x}, {startPos.y}, {directionIndex}");
+            //Debug.Log($"indices for num squares to edges: {startPos.x}, {startPos.y}, {directionIndex}");
             for (int n = 0; n < numSquaresToEdges[startPos.x, startPos.y, directionIndex]; n++)
             {
                 Vector2Int targetSquare = startPos + directionOffsets[directionIndex] * (n + 1);
                 int pieceOnTargetSquare = _moveLogic.GetSquare(targetSquare);
 
                 PieceColor friendlyColor = piece.pieceData.color;
+                PieceColor enemyColor = friendlyColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
+                PieceColor targetSquareColor = pieceOnTargetSquare > 8 ? PieceColor.Black : pieceOnTargetSquare != 0 ? PieceColor.White : PieceColor.None;
+                
+                //Debug.Log($"friendly color is {friendlyColor.ToString()}, target square color is {targetSquareColor.ToString()}");
                 
                 // Blocked by friendly piece, can't move any further in that direction
-                if ((pieceOnTargetSquare < 8 && friendlyColor == PieceColor.White) ||
-                    (pieceOnTargetSquare > 8 && friendlyColor == PieceColor.Black))
+                if (friendlyColor == targetSquareColor)
                     break;
                 
                 Move move = new Move
@@ -397,8 +410,7 @@ public class PrecomputedMoveData
                 moves.Add(move);
 
                 // Can't move any further in this direction after capturing opponent's piece
-                if ((pieceOnTargetSquare < 8 && friendlyColor == PieceColor.Black) ||
-                    (pieceOnTargetSquare > 8 && friendlyColor == PieceColor.White))
+                if (enemyColor == targetSquareColor)
                     break;
             }
         }
@@ -406,10 +418,10 @@ public class PrecomputedMoveData
         return moves;
     }
     
-    static Vector2Int WorldToBoard(Piece piece)
+    static Vector2 WorldToBoard(Vector2 pos)
     {
-        Vector2Int pos = Vector2Int.RoundToInt(piece.go.transform.position);
-        Vector2Int snappedPos = new Vector2Int(pos.x > 0 ? pos.x + 1 : pos.x, pos.y > 0 ? pos.y + 1 : pos.y);
+        Vector2 snappedPos = new Vector2(pos.x > 0 ? (int)pos.x + 1 : (int)pos.x, pos.y > 0 ? (int)pos.y + 1 : (int)pos.y);
+        Debug.Log("snapped pos in world is " +  snappedPos);
         return snappedPos + Vector2Int.RoundToInt(_moveLogic.transform.position) + Vector2Int.one * 3; // Offset due to pivot point being in center of the board
     }
 }

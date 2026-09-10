@@ -7,7 +7,7 @@ public abstract class Piece
     public PieceData pieceData;
     public GameObject go;
 
-    public abstract List<Move> GetLegalMoves();
+    public abstract List<Move> GetLegalMoves(Vector2 initialPos);
 }
 
 
