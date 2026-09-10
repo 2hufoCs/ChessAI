@@ -5,6 +5,8 @@ namespace Pieces
 {
     public class Rook : Piece
     {
+        public bool hasMoved;
+        
         public Rook(PieceData pieceData, GameObject go)
         {
             this.pieceData = pieceData;

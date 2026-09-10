@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using System.Data;
 using System.IO.MemoryMappedFiles;
 using NaughtyAttributes;
 using Pieces;
@@ -13,6 +14,7 @@ public class MoveLogic : MonoBehaviour
 {
     private readonly int[,] _board = new int[8, 8];
     private readonly Dictionary<Vector2, Piece> _pieces = new();
+    [SerializeField] private PieceColor _colorToPlay = PieceColor.White;
     
     [Header("Main parameters")]
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -71,6 +73,8 @@ public class MoveLogic : MonoBehaviour
             Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
             if (_pieces.TryGetValue(snappedWholePos, out Piece pieceToDrag))
             {
+                if (pieceToDrag.pieceData.color != _colorToPlay) return;
+                
                 _heldPiece = GetPieceFromGameObject(pieceToDrag.go);
                 _heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
                 _heldPieceStartSquare = snappedWholePos;
@@ -132,16 +136,22 @@ public class MoveLogic : MonoBehaviour
                 newPiece = new Queen(data, pieceObject);
                 break;
             case PieceType.King:
-                newPiece = new King(data, pieceObject, this);
+                newPiece = new King(data, pieceObject, this, GetRooks(data.color));
                 break;
         }
                 
         return newPiece;
     }
 
-    bool CheckForLegalMove(Move move)
+    Dictionary<Vector2, Rook> GetRooks(PieceColor color)
     {
-        return _heldPieceLegalMoves.Contains(move);
+        Dictionary<Vector2, Rook> result = new Dictionary<Vector2, Rook>();
+        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        {
+            if (piece.Value.pieceData.type == PieceType.Rook && piece.Value.pieceData.color == color)
+                result.Add(piece.Key, (Rook)piece.Value);
+        }
+        return result;
     }
 
     void ShowLegalMoves()
@@ -201,7 +211,41 @@ public class MoveLogic : MonoBehaviour
                 _pieces.Remove(move.endSquare);
             }
         }
+        
+        SpecialPieceMoves(piece, move);
+            
+        _pieces.Add(move.endSquare, piece);
+        
+        piece.go.transform.position = BoardToWorld(move.endSquare);
+        if (move.rookToCastle == null)
+            _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
 
+    }
+
+    void SpecialPieceMoves(Piece piece, Move move)
+    {
+        // Also move rook for castling
+        if (move.rookToCastle != null)
+        {
+            Vector2Int startPos = Vector2Int.FloorToInt(WorldToBoard(move.rookToCastle.go.transform.position));
+            Move rookMove = new Move { startSquare = startPos, endSquare = move.rookEndSquare };
+            MakeMove(move.rookToCastle, rookMove);
+        }
+        
+        // Prevent castling if either king or rook moved
+        if (piece.pieceData.type == PieceType.Rook)
+        {
+            Rook rook = (Rook)piece;
+            rook.hasMoved = true;
+        }
+
+        if (piece.pieceData.type == PieceType.King)
+        {
+            King king = (King)piece;
+            king.hasMoved = true;
+        }
+            
+        
         // Destroy piece when en-passant
         GameObject pawnToDestroy = move.enPassantCapture;
         if (pawnToDestroy != null)
@@ -220,15 +264,6 @@ public class MoveLogic : MonoBehaviour
                 _heldPawn.doubleMovedLastTurn = false;
             else _heldPawn.disableEnPassantNextTurn = true;
         }
-            
-        _pieces.Add(move.endSquare, piece);
-        
-        piece.go.transform.position = BoardToWorld(move.endSquare);
-        
-        // If piece is pawn, prevent it from being captured with en-passant
-        // if (piece.pieceData.type == PieceType.Pawn)
-        //     Debug.Log("subclass of pawn is " + ((Pawn)piece.GetType()).doubleMovedLastTurn = false);
-
     }
 
     void SpawnPiece(PieceData piece,  Vector2Int pos)
@@ -314,7 +349,6 @@ public class MoveLogic : MonoBehaviour
     
     void LoadPositionFromFen(string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     {
-        Debug.Log("loading fen position");
         var pieceTypeFromSymbol = new Dictionary<char, int>()
         {
             ['k'] = (int)PieceType.King, ['p'] = (int)PieceType.Pawn, ['n'] = (int)PieceType.Knight,
@@ -367,7 +401,14 @@ public struct Move : IEquatable<Move>
 {
     public Vector2Int startSquare;
     public Vector2Int endSquare;
-    public GameObject enPassantCapture; // When taking a piece using en passant
+    
+    // When taking a piece using en passant
+    public GameObject enPassantCapture; 
+    
+    // For castling
+    public Rook rookToCastle;
+    public Vector2Int rookEndSquare;
+    
 
     public bool Equals(Move other)
     {

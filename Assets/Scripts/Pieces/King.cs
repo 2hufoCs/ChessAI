@@ -5,18 +5,23 @@ namespace Pieces
 {
     public class King : Piece
     {
+        private Dictionary<Vector2, Rook> _rooks;
         private MoveLogic _moveLogic;
         
-        public King(PieceData pieceData, GameObject go, MoveLogic moveLogic)
+        public bool hasMoved;
+
+        public King(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2, Rook> rooks)
         {
             this.pieceData = pieceData;
             this.go = go;
             _moveLogic = moveLogic;
+            _rooks = rooks;
         }
     
         public override List<Move> GetLegalMoves(Vector2 initialPos)
         {
             List<Move> moves = new();
+            Vector2Int snappedWholePos = Vector2Int.RoundToInt(initialPos);
             foreach (Vector2 dir in PrecomputedMoveData.directionOffsets)
             {
                 Vector2Int targetSquarePos = Vector2Int.RoundToInt(initialPos + dir);
@@ -33,12 +38,55 @@ namespace Pieces
                 
                 moves.Add(new Move
                 {
-                    startSquare = Vector2Int.RoundToInt(initialPos),
+                    startSquare = snappedWholePos,
                     endSquare = targetSquarePos,
                 });
             }
+            
+            CheckCastling(snappedWholePos, ref moves);
 
             return moves;
+        }
+
+        void CheckCastling(Vector2Int snappedWholePos, ref List<Move> moves)
+        {
+            // Castle logic
+            foreach (KeyValuePair<Vector2, Rook> rook in _rooks)
+            {
+                if (rook.Value == null) continue;
+                
+                // Rule n°1: king and rooks didn't move from the beginning
+                if (hasMoved || rook.Value.hasMoved) continue;
+                
+                // Rule n°2: no pieces between king and rook
+                Vector2Int kingSquarePos = snappedWholePos;
+                Vector2Int rookSquarePos = Vector2Int.RoundToInt(rook.Key);
+                int dir = kingSquarePos.x < rookSquarePos.x ? 1 : -1;
+                
+                bool stopCastling = false;
+                for (int i = kingSquarePos.x + dir; dir == 1 ? i < rookSquarePos.x : i > rookSquarePos.x; i += dir)
+                {
+                    if (_moveLogic.GetSquare(new Vector2Int(i, kingSquarePos.y)) != 0)
+                    {
+                        stopCastling = true;
+                        break;
+                    }
+                }
+                if (stopCastling) continue;
+                
+                // Rule n°3: path between king and rook can't be targeted by enemy square
+                
+                // If all checks have been passed, king is allowed to castle!!
+                Vector2Int newKingPos = kingSquarePos + new Vector2Int(dir * 2, 0);
+                Vector2Int newRookPos = newKingPos + new Vector2Int(-dir, 0);
+                moves.Add(new Move
+                {
+                    startSquare = snappedWholePos,
+                    endSquare = newKingPos,
+                    rookToCastle = rook.Value,
+                    rookEndSquare = newRookPos,
+                });
+            }
         }
         
         bool IsInsideBounds(Vector2 pos)
