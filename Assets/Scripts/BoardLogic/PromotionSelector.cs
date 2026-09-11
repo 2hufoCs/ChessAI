@@ -3,18 +3,20 @@ using UnityEngine.InputSystem;
 
 public class PromotionSelector : MonoBehaviour
 {
-    private PieceType _type;
+    [SerializeField] private PieceType _type;
+    [SerializeField] private LayerMask _promotionLayer;
 
-    void OnClick(InputAction.CallbackContext context)
+    public void OnClick(InputAction.CallbackContext context)
     {
         Vector3 mouseScreenPos =  Input.mousePosition;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
 
-        Collider2D hit = Physics2D.OverlapCircle(mouseWorldPos, .01f);
+        Collider2D hit = Physics2D.OverlapCircle(mouseWorldPos, .01f,  _promotionLayer);
         // Vector2 snappedPos = WorldToBoard(mouseWorldPos);
         // Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
 
         if (hit == null) return;
+        Debug.Log("promoted pawn to " + _type);
         ActionsBus.OnPawnPromoted?.Invoke(_type);
     }
     

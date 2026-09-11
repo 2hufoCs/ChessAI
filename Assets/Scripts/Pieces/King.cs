@@ -5,16 +5,22 @@ namespace Pieces
 {
     public class King : Piece
     {
+        public bool isInCheck;
+        
         private Dictionary<Vector2, Rook> _rooks;
         private MoveLogic _moveLogic;
         
         public bool hasMoved;
 
-        public King(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2, Rook> rooks)
+        public King(PieceData pieceData, GameObject go, MoveLogic moveLogic)
         {
             this.pieceData = pieceData;
             this.go = go;
             _moveLogic = moveLogic;
+        }
+
+        public void AssignRooks(Dictionary<Vector2, Rook> rooks)
+        {
             _rooks = rooks;
         }
     
@@ -58,23 +64,40 @@ namespace Pieces
                 // Rule n°1: king and rooks didn't move from the beginning
                 if (hasMoved || rook.Value.hasMoved) continue;
                 
-                // Rule n°2: no pieces between king and rook
                 Vector2Int kingSquarePos = snappedWholePos;
                 Vector2Int rookSquarePos = Vector2Int.RoundToInt(rook.Key);
                 int dir = kingSquarePos.x < rookSquarePos.x ? 1 : -1;
                 
                 bool stopCastling = false;
-                for (int i = kingSquarePos.x + dir; dir == 1 ? i < rookSquarePos.x : i > rookSquarePos.x; i += dir)
+                for (int i = kingSquarePos.x; dir == 1 ? i < rookSquarePos.x : i > rookSquarePos.x; i += dir)
                 {
-                    if (_moveLogic.GetSquare(new Vector2Int(i, kingSquarePos.y)) != 0)
+                    Vector2Int pos = new Vector2Int(i, kingSquarePos.y);
+                    
+                    // Rule n°2: no pieces between king and rook
+                    if (_moveLogic.GetSquare(pos) != 0 && i != kingSquarePos.x)
                     {
                         stopCastling = true;
                         break;
                     }
+                    
+                    // Rule n°3: path between king and rook can't be targeted by enemy square
+                    Dictionary<Piece, List<Vector2Int>> enemyTargetedSquares = pieceData.color == PieceColor.Black ? 
+                        LegalMoveLogic.Instance.whiteTargetedSquares :  LegalMoveLogic.Instance.blackTargetedSquares;
+                    foreach (List<Vector2Int> pieceTargets in enemyTargetedSquares.Values)
+                    {
+                        if (pieceTargets.Contains(pos))
+                        {
+                            stopCastling = true;
+                            break;
+                        }
+                    }
+
+                    if (stopCastling) break;
+
+
                 }
                 if (stopCastling) continue;
                 
-                // Rule n°3: path between king and rook can't be targeted by enemy square
                 
                 // If all checks have been passed, king is allowed to castle!!
                 Vector2Int newKingPos = kingSquarePos + new Vector2Int(dir * 2, 0);

@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System.Data;
 using System.IO.MemoryMappedFiles;
+using DG.Tweening;
 using NaughtyAttributes;
 using Pieces;
 
@@ -15,16 +16,30 @@ public class MoveLogic : MonoBehaviour
     private readonly int[,] _board = new int[8, 8];
     private readonly Dictionary<Vector2, Piece> _pieces = new();
     [SerializeField] private PieceColor _colorToPlay = PieceColor.White;
-    
-    [Header("Main parameters")]
+
+    [Header("Main parameters")] 
+    [SerializeField] private bool isWhiteHuman;
+    [SerializeField] private bool isBlackHuman;
+
+    public bool IsGamePaused { get => _isGamePaused; set => Pause(value); }
+    private bool _isGamePaused;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
+    // Keep track of both kings
+    private King _whiteKing;
+    private King _blackKing;
     private Pawn _heldPawn; // Used to calculate en-passant 
 
     [Header("References")]
     [SerializeField] private GameObject _piecePrefab;
     [SerializeField] private List<PieceData> _piecesData = new ();
     [SerializeField] private LayerMask _pieceLayer;
+
+    [SerializeField] private SpriteRenderer _pauseDarkOverlay;
+    [SerializeField] private GameObject _whitePromotionChoicePrefab;
+    [SerializeField] private GameObject _blackPromotionChoicePrefab;
+    private GameObject _spawnedPromotionChoice;
+    
     private LegalMoveLogic _legalLogic;
 
     [Header("Debug")] 
@@ -36,20 +51,28 @@ public class MoveLogic : MonoBehaviour
         _legalLogic = LegalMoveLogic.Instance;
         
         LoadPositionFromFen(_basePositionFen);
+        
+        // Precomputed stuff
+        InitializeKingCastling();
         PrecomputedMoveData precomputedMoves = new(this);
-        ComputeTargetedSquares();
+        _legalLogic.ComputeTargetedSquares(_pieces);
     }
 
     void OnEnable()
     {
-        ActionsBus.OnPlayerMoved += ComputeTargetedSquares;
+        ActionsBus.OnPlayerMoved += RecomputeTargetedSquares;
         ActionsBus.OnPawnPromoted += PromotePawn;
     }
 
     void OnDisable()
     {
-        ActionsBus.OnPlayerMoved -= ComputeTargetedSquares;
+        ActionsBus.OnPlayerMoved -= RecomputeTargetedSquares;
         ActionsBus.OnPawnPromoted -= PromotePawn;
+    }
+
+    void RecomputeTargetedSquares()
+    {
+        _legalLogic.ComputeTargetedSquares(_pieces);
     }
 
     void Update()
@@ -66,7 +89,8 @@ public class MoveLogic : MonoBehaviour
     void StateMachine(InputAction.CallbackContext context)
     {
         // State 1 - None
-        if (!context.performed && !context.canceled) return;
+        if (context.performed) Debug.Log($"just clicked in state machine, is game paused:  {_isGamePaused}, is held piece null: {_legalLogic.heldPiece != null}");
+        if (!context.performed && !context.canceled || IsGamePaused) return;
         
         Vector3 mouseScreenPos =  Input.mousePosition;
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
@@ -93,17 +117,27 @@ public class MoveLogic : MonoBehaviour
 
             Move moveToPlay = _legalLogic.FindPseudoLegalMove(snappedWholePos);
             if (moveToPlay.endSquare != -Vector2Int.one)
+            {
                 MakeMove(_legalLogic.heldPiece, moveToPlay);
+            }
             else _legalLogic.heldPiece.go.transform.position = BoardToWorld(_legalLogic.heldPieceStartSquare);
-            
-            if (_debugLegalMoves) _legalLogic.HideLegalMoves();
-            _legalLogic.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
-            _legalLogic.heldPiece = null;
+
+            ReleasePiece();
         }
+    }
+
+    void ReleasePiece()
+    {
+        if (_debugLegalMoves) _legalLogic.HideLegalMoves();
+        _legalLogic.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Pieces";
+        _legalLogic.heldPiece = null;
     }
 
     void MakeMove(Piece piece, Move move)
     {
+        // Before playing move, promotion check
+        if (PromotionCheck(_legalLogic.heldPiece, move)) return;
+        
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
         
@@ -131,37 +165,6 @@ public class MoveLogic : MonoBehaviour
             ActionsBus.OnPlayerMoved();
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
         }
-    }
-
-    void ComputeTargetedSquares()
-    {
-        // Reinitialize lists
-        _legalLogic.whiteTargetedSquares.Clear();
-        _legalLogic.blackTargetedSquares.Clear();
-        _legalLogic.whitePseudolegalMoves.Clear();
-        _legalLogic.blackPseudolegalMoves.Clear();
-        
-        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
-        {
-            // Get legal moves of piece, track targeted squares
-            List<Move> moves = piece.Value.GetPseudolegalMoves(piece.Key);
-            List<Vector2Int> targetPositions = new();
-            foreach (Move move in moves)
-                targetPositions.Add(move.endSquare);
-            
-            if (piece.Value.pieceData.color == PieceColor.White)
-            {
-                _legalLogic.whiteTargetedSquares.Add(piece.Value, targetPositions);
-                _legalLogic.whitePseudolegalMoves.Add(piece.Value, moves);
-            }
-            else
-            {
-                _legalLogic.blackTargetedSquares.Add(piece.Value, targetPositions);
-                _legalLogic.blackPseudolegalMoves.Add(piece.Value, moves);
-            }
-        }
-        
-        Debug.Log("finished computing targeted squares and pseudo legal moves");
     }
 
     void SpecialPieceMoves(Piece piece, Move move)
@@ -197,16 +200,30 @@ public class MoveLogic : MonoBehaviour
             Destroy(move.enPassantCapture);
         }
         
-        // Remove option to en-passant pawns
-        if (piece.GetType() == typeof(Pawn))
+        if (_heldPawn != null)
         {
+            // Remove option to en-passant pawns
             _heldPawn = (Pawn)_legalLogic.heldPiece;
             if (_heldPawn.disableEnPassantNextTurn)
                 _heldPawn.doubleMovedLastTurn = false;
             else _heldPawn.disableEnPassantNextTurn = true;
         }
-        
-        // Pawn promotion: make player replay, have to promote to a more important piece
+    }
+
+    bool PromotionCheck(Piece piece,  Move move)
+    {
+        if (piece.GetType() == typeof(Pawn))
+        {
+            // Pawn promotion: make player replay, have to promote to a more important piece
+            int endRank = piece.pieceData.color == PieceColor.White ? 7 : 0;
+            if (move.endSquare.y == endRank)
+            {
+                ShowPromotionChoice((Pawn)piece, move);
+                return true;
+            }
+        }
+
+        return false;
     }
     
     Piece TryDragPiece(Collider2D hit, Vector2 mouseWorldPos, Vector2 snappedWholePos)
@@ -226,7 +243,9 @@ public class MoveLogic : MonoBehaviour
         _legalLogic.heldPiece = _legalLogic.goToPieces[pieceToDrag.go];
         _legalLogic.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
         _legalLogic.heldPieceStartSquare = snappedWholePos;
-                
+        
+        // For promotion and en-passant
+        _heldPawn = _legalLogic.heldPiece.GetType() == typeof(Pawn) ? (Pawn)_legalLogic.heldPiece : null;
         
         _legalLogic.heldPieceLegalMoves = _colorToPlay == PieceColor.White ?  _legalLogic.whitePseudolegalMoves[_legalLogic.heldPiece] : 
             _legalLogic.blackPseudolegalMoves[_legalLogic.heldPiece];
@@ -266,6 +285,26 @@ public class MoveLogic : MonoBehaviour
             _legalLogic.whiteTargetedSquares.Add(newPiece, new List<Vector2Int>());
         else _legalLogic.blackTargetedSquares.Add(newPiece, new List<Vector2Int>());
         _legalLogic.goToPieces.Add(newGo, newPiece);
+        
+        // Keep track of both kings
+        if (newPiece.pieceData.type == PieceType.King)
+        {
+            King king = (King)newPiece;
+            if (newPiece.pieceData.color == PieceColor.White)
+                _whiteKing = king;
+            else _blackKing = king;
+        }
+    }
+
+    void InitializeKingCastling()
+    {
+        if (_whiteKing == null)
+            Debug.LogError("no white king on board");
+        if (_blackKing == null)
+            Debug.LogError("no black king on board");
+        
+        _whiteKing.AssignRooks(GetRooks(PieceColor.White));
+        _blackKing.AssignRooks(GetRooks(PieceColor.Black));
     }
     
     Piece GetPieceFromGameObject(GameObject pieceObject)
@@ -282,6 +321,11 @@ public class MoveLogic : MonoBehaviour
             }
         }
                 
+        return InitializePieceFromData(data, pieceObject);
+    }
+
+    Piece InitializePieceFromData(PieceData data, GameObject pieceObject)
+    {
         // Create a new piece with obtained data
         Piece newPiece = null;
         switch (data.type)
@@ -302,10 +346,10 @@ public class MoveLogic : MonoBehaviour
                 newPiece = new Queen(data, pieceObject);
                 break;
             case PieceType.King:
-                newPiece = new King(data, pieceObject, this, GetRooks(data.color));
+                newPiece = new King(data, pieceObject, this);
                 break;
         }
-                
+
         return newPiece;
     }
 
@@ -372,15 +416,53 @@ public class MoveLogic : MonoBehaviour
         return snappedPos + (Vector2)transform.position + Vector2.one * 3;
     }
 
+    void Pause(bool pause)
+    {
+        _pauseDarkOverlay.enabled = pause;
+        _isGamePaused = pause;
+    }
+
+    void ShowPromotionChoice(Pawn pawnToPromote, Move move)
+    {
+        IsGamePaused = true;
+        Vector2Int endPos = move.endSquare;
+        pawnToPromote.go.transform.position = BoardToWorld(endPos);
+
+        // Remove pawn from board matrix
+        Vector2Int startPos = move.startSquare;
+        _board[startPos.y, startPos.x] = 0;
+        
+        if (_colorToPlay == PieceColor.White && isWhiteHuman)
+            _spawnedPromotionChoice = Instantiate(_whitePromotionChoicePrefab, BoardToWorld(endPos),  Quaternion.identity, transform);
+        else if (_colorToPlay == PieceColor.Black && isBlackHuman)
+            _spawnedPromotionChoice = Instantiate(_blackPromotionChoicePrefab, BoardToWorld(endPos), Quaternion.identity, transform);
+    }
+
     void PromotePawn(PieceType newType)
     {
-        Pawn pawn = (Pawn)_legalLogic.heldPiece;
-        Vector2Int pos = Vector2Int.RoundToInt(WorldToBoard(_legalLogic.heldPiece.go.transform.position));
-
+        Vector2Int pos = Vector2Int.RoundToInt(WorldToBoard(_heldPawn.go.transform.position));
+        
         // Pawn is trans now
-        pawn.pieceData.type = newType;
-        _board[pos.y, pos.x] = (int)pawn.pieceData.type + (int)pawn.pieceData.color;
-        pawn.go.GetComponent<SpriteRenderer>().sprite = pawn.pieceData.sprite;
+        PieceData data = GetPieceData((int)newType, (int)_heldPawn.pieceData.color);
+        Piece promotedPawn = InitializePieceFromData(data, _heldPawn.go);
+
+        Debug.Log("pos is" + pos);
+        
+        _board[pos.y, pos.x] = (int)promotedPawn.pieceData.type + (int)promotedPawn.pieceData.color;
+        promotedPawn.go.GetComponent<SpriteRenderer>().sprite = promotedPawn.pieceData.sprite;
+        
+        // Delete piece selector if human playing
+        if (_spawnedPromotionChoice)
+            Destroy(_spawnedPromotionChoice);
+
+        _pieces[pos] =  promotedPawn;
+        
+        _legalLogic.RemovePieceFromLegalMoves(_heldPawn);
+        _legalLogic.AddPieceToLegalMoves(promotedPawn);
+        _legalLogic.goToPieces[_heldPawn.go] = promotedPawn;
+        
+        //_colorToPlay = _colorToPlay == PieceColor.White ? PieceColor.Black : PieceColor.White;
+        IsGamePaused = false;
     }
 
     bool IsPieceEquivalent(Piece piece1, Piece piece2)
