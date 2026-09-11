@@ -4,14 +4,26 @@ using UnityEngine;
 public class LegalMoveLogic : MonoBehaviour
 {
     public static LegalMoveLogic Instance { get;  private set; }
+
+    [HideInInspector] public Dictionary<Piece, List<Vector2Int>> whiteTargetedSquares = new();
+    [HideInInspector] public Dictionary<Piece, List<Vector2Int>> blackTargetedSquares = new();
     
+    [HideInInspector] public Dictionary<Piece, List<Move>> whitePseudolegalMoves = new();
+    [HideInInspector] public Dictionary<Piece, List<Move>> blackPseudolegalMoves = new();
+
+    [HideInInspector] public Dictionary<GameObject, Piece> goToPieces = new();
+
+
     [HideInInspector] public Piece heldPiece;
     [HideInInspector] public Vector2Int heldPieceStartSquare;
     [HideInInspector] public List<Move> heldPieceLegalMoves = new();
     
     [Header("Debug")]
     [SerializeField] private GameObject _squareHighlighterPrefab;
+    [SerializeField] private GameObject _targetedSquareHighlighterPrefab;
+    
     private readonly List<GameObject> _squareHighlighters = new();
+    private readonly List<GameObject> _targetedSquaresHighlighters = new();
 
     void Awake()
     {
@@ -37,7 +49,7 @@ public class LegalMoveLogic : MonoBehaviour
         _squareHighlighters.Clear();
     }
 
-    public Move FindLegalMove(Vector2Int endSquare)
+    public Move FindPseudoLegalMove(Vector2Int endSquare)
     {
         foreach (Move move in heldPieceLegalMoves)
         {

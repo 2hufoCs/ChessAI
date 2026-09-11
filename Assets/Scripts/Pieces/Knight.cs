@@ -19,7 +19,7 @@ namespace Pieces
             _moveLogic = moveLogic;
         }
     
-        public override List<Move> GetLegalMoves(Vector2 initialPos)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
         {
             List<Move> moves = new();
             

@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 513466248}
   - component: {fileID: 513466249}
+  - component: {fileID: 513466251}
   - component: {fileID: 513466250}
   m_Layer: 0
   m_Name: Board
@@ -184,7 +185,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 8
   _debugLegalMoves: 1
-  _squareHighlighterPrefab: {fileID: 3275651609520845173, guid: f0677716a4d2e3a4d832457791db29e1, type: 3}
 --- !u!114 &513466250
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -231,6 +231,20 @@ MonoBehaviour:
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &513466251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 513466247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f97247944d1b71e459444a19f12872dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LegalMoveLogic
+  heldPieceStartSquare: {x: 0, y: 0}
+  _squareHighlighterPrefab: {fileID: 3275651609520845173, guid: 33ee5e6319baafa4491ed7e29af33462, type: 3}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
