@@ -4,19 +4,31 @@ using UnityEngine.InputSystem;
 public class PromotionSelector : MonoBehaviour
 {
     [SerializeField] private PieceType _type;
+    [SerializeField] private PieceColor _color;
     [SerializeField] private LayerMask _promotionLayer;
+
+    private bool _triggered = false;
+
+    void OnEnable()
+    {
+        transform.localPosition *= _color == PieceColor.White ? 1 : -1;
+        transform.localPosition *= BoardSettings.Instance.boardFlipped ? -1 : 1;
+    }
 
     public void OnClick(InputAction.CallbackContext context)
     {
-        Vector3 mouseScreenPos =  Input.mousePosition;
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
+        if (_triggered) return;
+        
+        Vector2 mouseScreenPos =  Input.mousePosition;
+        Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouseScreenPos);
 
         Collider2D hit = Physics2D.OverlapCircle(mouseWorldPos, .01f,  _promotionLayer);
-        // Vector2 snappedPos = WorldToBoard(mouseWorldPos);
-        // Vector2Int snappedWholePos = Vector2Int.RoundToInt(snappedPos);
 
         if (hit == null) return;
-        Debug.Log("promoted pawn to " + _type);
+        if (hit != GetComponent<Collider2D>()) return;
+
+        _triggered = true;
+        
         ActionsBus.OnPawnPromoted?.Invoke(_type);
     }
     

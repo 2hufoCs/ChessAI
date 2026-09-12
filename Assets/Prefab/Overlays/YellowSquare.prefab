@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6518417120359634353}
   - component: {fileID: 4229331751587013227}
   m_Layer: 0
-  m_Name: RedSquare
+  m_Name: YellowSquare
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -82,7 +82,7 @@ SpriteRenderer:
   m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 89e5aca80e1c0f548875cf7566f3c8cf, type: 3}
-  m_Color: {r: 1, g: 0, b: 0, a: 0}
+  m_Color: {r: 1, g: 0.964316, b: 0, a: 0.7490196}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0

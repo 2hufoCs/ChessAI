@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 513466248}
   - component: {fileID: 513466249}
   - component: {fileID: 513466251}
+  - component: {fileID: 513466252}
   - component: {fileID: 513466250}
   m_Layer: 0
   m_Name: Board
@@ -167,9 +168,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveLogic
   _colorToPlay: 0
-  isWhiteHuman: 1
-  isBlackHuman: 1
-  _basePositionFen: 8/4P3/8/8/k7/8/8/K7 w - - 0 1
+  _basePositionFen: r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w q - 0 1
   _piecePrefab: {fileID: 1194715645466863060, guid: 8eb0796d5921c6144b0e88729c7045f2, type: 3}
   _piecesData:
   - {fileID: 11400000, guid: 2a37466a4cfc1b54baf4845b24f00492, type: 2}
@@ -190,7 +189,6 @@ MonoBehaviour:
   _pauseDarkOverlay: {fileID: 2070057150}
   _whitePromotionChoicePrefab: {fileID: 4763184433599157505, guid: 5da62f7488f23d445b30044bd0a2b250, type: 3}
   _blackPromotionChoicePrefab: {fileID: 4763184433599157505, guid: 8f94c9326d2547c49a7daf146d4c86fb, type: 3}
-  _debugLegalMoves: 1
 --- !u!114 &513466250
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -251,7 +249,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LegalMoveLogic
   heldPieceStartSquare: {x: 0, y: 0}
   _squareHighlighterPrefab: {fileID: 3275651609520845173, guid: 33ee5e6319baafa4491ed7e29af33462, type: 3}
-  _targetedSquareHighlighterPrefab: {fileID: 0}
+  _targetedSquareHighlighterPrefab: {fileID: 3275651609520845173, guid: f0677716a4d2e3a4d832457791db29e1, type: 3}
+  _blockOptionHighlighterPrefab: {fileID: 3275651609520845173, guid: a055d2bfe96e8594586072b499b5bfd5, type: 3}
+  _pinHighlighterPrefab: {fileID: 3275651609520845173, guid: ffbb884b0e93361498f0fd879cc399be, type: 3}
+--- !u!114 &513466252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 513466247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 314636abdfb4e3445a9f529e7b419e4f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoardSettings
+  boardFlipped: 0
+  isWhiteHuman: 1
+  isBlackHuman: 1
+  debugLegalMoves: 1
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -1227,7 +1243,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
