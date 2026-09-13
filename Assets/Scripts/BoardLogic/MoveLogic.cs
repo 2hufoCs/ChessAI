@@ -168,7 +168,7 @@ public class MoveLogic : MonoBehaviour
         if (move.rookToCastle != null)
         {
             Vector2Int startPos = Vector2Int.FloorToInt(WorldToBoard(move.rookToCastle.go.transform.position));
-            Move rookMove = new Move { startSquare = startPos, endSquare = move.rookEndSquare };
+            Move rookMove = new Move(startPos, move.rookEndSquare);
             MakeMove(move.rookToCastle, rookMove);
         }
         
@@ -540,6 +540,8 @@ public struct Move : IEquatable<Move>
 {
     public Vector2Int startSquare;
     public Vector2Int endSquare;
+
+    public bool isMoveLegal;
     
     // When taking a piece using en passant
     public GameObject enPassantCapture; 
@@ -547,7 +549,17 @@ public struct Move : IEquatable<Move>
     // For castling
     public Rook rookToCastle;
     public Vector2Int rookEndSquare;
-    
+
+    public Move(Vector2Int startSquare, Vector2Int endSquare)
+    {
+        this.startSquare = startSquare;
+        this.endSquare = endSquare;
+
+        isMoveLegal = true;
+        enPassantCapture = null;
+        rookToCastle = null;
+        rookEndSquare = -Vector2Int.one;
+    }
 
     public bool Equals(Move other)
     {

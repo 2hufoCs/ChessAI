@@ -24,7 +24,7 @@ namespace Pieces
             _rooks = rooks;
         }
     
-        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
         {
             List<Move> moves = new();
             Vector2Int snappedWholePos = Vector2Int.RoundToInt(initialPos);
@@ -34,19 +34,18 @@ namespace Pieces
                 
                 // Exclude move if outside bounds
                 if (!IsInsideBounds(targetSquarePos)) continue;
+
+
+
+                Move move = new Move(snappedWholePos, targetSquarePos);
                 
-                // Exclude move if square has friendly piece
+                // Move not legal if square is a friendly piece
                 int targetSquare = _moveLogic.GetSquare(targetSquarePos);
-                PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
-                    targetSquare > 0 ? PieceColor.White : PieceColor.None;
+                PieceColor targetColor = targetSquare > 8 ? PieceColor.Black : targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
-                    continue;
+                    move.isMoveLegal = false;
                 
-                moves.Add(new Move
-                {
-                    startSquare = snappedWholePos,
-                    endSquare = targetSquarePos,
-                });
+                moves.Add(move);
             }
             
             CheckCastling(snappedWholePos, ref moves);
@@ -106,6 +105,7 @@ namespace Pieces
                 {
                     startSquare = snappedWholePos,
                     endSquare = newKingPos,
+                    isMoveLegal = true,
                     rookToCastle = rook.Value,
                     rookEndSquare = newRookPos,
                 });

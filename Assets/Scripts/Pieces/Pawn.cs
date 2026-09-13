@@ -19,7 +19,7 @@ namespace Pieces
             _pieces = pieces;
         }
     
-        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
         {
             List<Move> moves = new();
             Vector2Int snappedPos = Vector2Int.RoundToInt(initialPos);
@@ -57,7 +57,7 @@ namespace Pieces
             {
                 if (leftPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = leftPawn.go};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = leftPawn.go};
                     //Debug.Log("can make en passant, go to kill would be " + newMove.enPassantCapture);
                     moves.Add(newMove);
                 }
@@ -68,7 +68,7 @@ namespace Pieces
             {
                 if (rightPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = rightPawn.go};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = rightPawn.go};
                     moves.Add(newMove);
                 }
             }
@@ -82,26 +82,23 @@ namespace Pieces
             
             // Exclude move if square has friendly piece
             int targetSquare = _moveLogic.GetSquare(targetSquarePos);
-
-            if (haveToTake)
-            {
-                PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
-                    targetSquare > 0 ? PieceColor.White : PieceColor.None;
-                if (pieceData.color == targetColor || targetColor == PieceColor.None)
-                    return false;
-            }
-            else
+            Move move = new Move(Vector2Int.RoundToInt(startPos), targetSquarePos);
+            if (!haveToTake)
             {
                 if (targetSquare != 0)
                     return false;
+                moves.Add(move);
+                return true;
             }
 
+            PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
+                targetSquare > 0 ? PieceColor.White : PieceColor.None;
+            if (targetColor == PieceColor.None)
+                return false;
+            if (pieceData.color == targetColor)
+                move.isMoveLegal = false;
 
-            moves.Add(new Move
-            {
-                startSquare = Vector2Int.RoundToInt(startPos),
-                endSquare = targetSquarePos,
-            });
+            moves.Add(move);
             return true;
         }
 

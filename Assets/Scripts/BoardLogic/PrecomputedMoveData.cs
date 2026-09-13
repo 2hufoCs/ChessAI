@@ -53,7 +53,6 @@ public class PrecomputedMoveData
         
         for (int directionIndex = startDirIndex; directionIndex < endDirIndex; directionIndex++)
         {
-            //Debug.Log($"indices for num squares to edges: {startPos.x}, {startPos.y}, {directionIndex}");
             for (int n = 0; n < numSquaresToEdges[startPos.x, startPos.y, directionIndex]; n++)
             {
                 Vector2Int targetSquare = startPos + directionOffsets[directionIndex] * (n + 1);
@@ -62,22 +61,17 @@ public class PrecomputedMoveData
                 PieceColor friendlyColor = piece.pieceData.color;
                 PieceColor enemyColor = friendlyColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
                 PieceColor targetSquareColor = pieceOnTargetSquare > 8 ? PieceColor.Black : pieceOnTargetSquare != 0 ? PieceColor.White : PieceColor.None;
-                
-                //Debug.Log($"friendly color is {friendlyColor.ToString()}, target square color is {targetSquareColor.ToString()}");
+
+                Move move = new(startPos, targetSquare);
                 
                 // Blocked by friendly piece, can't move any further in that direction
                 if (friendlyColor == targetSquareColor)
-                    break;
+                    move.isMoveLegal = false;
                 
-                Move move = new Move
-                {
-                    startSquare = startPos,
-                    endSquare = targetSquare
-                };
                 moves.Add(move);
-
+                
                 // Can't move any further in this direction after capturing opponent's piece
-                if (enemyColor == targetSquareColor)
+                if (targetSquareColor != PieceColor.None)
                     break;
             }
         }

@@ -21,6 +21,7 @@ public class LegalMoveLogic : MonoBehaviour
     // Used to deal with checks
     private bool _canBlockCheck;
     private List<Vector2Int> _blockCheckSquares = new();
+    private List<Vector2Int> _lookThroughKingSquares = new();
     
     // For human play
     [HideInInspector] public Piece heldPiece;
@@ -53,27 +54,28 @@ public class LegalMoveLogic : MonoBehaviour
 
         if (!kingToPlay.isInCheck)
         {
-            if (isWhitePlaying)
-                whiteLegalMoves =  new(pseudoLegalMoves);
-            else blackLegalMoves = new(pseudoLegalMoves);
-            return;
+            legalMoves = new(pseudoLegalMoves);
+            legalMoves.Remove(kingToPlay);
         }
         
         // Only allow moves that go out of check
         foreach (KeyValuePair<Piece, List<Move>> pieceMoves in pseudoLegalMoves)
         {
+            if (!kingToPlay.isInCheck && pieceMoves.Key != kingToPlay)
+                continue;
+            
             List<Move> newMoves = new();
             foreach (Move move in pieceMoves.Value)
             {
                 // If piece is king, simply need to move to non-targeted square
                 if (pieceMoves.Key == kingToPlay)
                 {
-                    if (!IsSquareTargeted(move.endSquare, kingToPlay.pieceData.color))
+                    if (!IsSquareTargeted(move.endSquare, kingToPlay.pieceData.color) && !_lookThroughKingSquares.Contains(move.endSquare))
                         newMoves.Add(move);
                     continue;
                 }
 
-                if (!_canBlockCheck) continue;
+                if (!_canBlockCheck || !kingToPlay.isInCheck) continue;
                 
                 // For other pieces, must reach one of block options
                 if (_blockCheckSquares.Contains(move.endSquare))
@@ -97,19 +99,22 @@ public class LegalMoveLogic : MonoBehaviour
         whitePseudolegalMoves.Clear();
         blackPseudolegalMoves.Clear();
         
+        // Reset a bunch of stuff
         int enemyCheckCount = 0;
         targetKing.isInCheck = false;
         _canBlockCheck = true;
         _blockCheckSquares.Clear();
+        _lookThroughKingSquares.Clear();
         
         foreach (KeyValuePair<Vector2, Piece> piece in pieces)
         {
             // Get legal moves of piece, track targeted squares
             List<Move> moves = new();
             List<Vector2Int> targetPositions = new();
-            foreach (Move move in piece.Value.GetPseudolegalMoves(piece.Key))
+            foreach (Move move in piece.Value.GetPseudolegalMoves(piece.Key, true))
             {
-                moves.Add(move);
+                if (move.isMoveLegal)
+                    moves.Add(move);
                 targetPositions.Add(move.endSquare);
             }
             
@@ -125,7 +130,6 @@ public class LegalMoveLogic : MonoBehaviour
             }
 
             Vector2Int kingPos = Vector2Int.RoundToInt(WorldToBoard(targetKing.go.transform.position));
-            //Debug.Log($"does {piece.Value.pieceData.color} {piece.Value.pieceData.type} have king: {targetPositions.Contains(kingPos)}");
             if (piece.Value.pieceData.color == targetKing.pieceData.color || !targetPositions.Contains(kingPos))
                 continue;
             
@@ -159,8 +163,6 @@ public class LegalMoveLogic : MonoBehaviour
             Vector2Int posDiff = kingPos - basePos;
             Vector2Int clampedDiff = new Vector2Int(Mathf.Clamp(posDiff.x, -1, 1), Mathf.Clamp(posDiff.y, -1, 1));
             
-            Debug.Log("getting squares in direction " + clampedDiff + " for " + enemyType);
-                
             // Get all squares in line of attack
             Vector2Int squareToBlock = basePos;
             for (int i = 1; squareToBlock != kingPos; i++)
@@ -174,6 +176,8 @@ public class LegalMoveLogic : MonoBehaviour
                 squareToBlock += clampedDiff;
                 _blockCheckSquares.Add(squareToBlock);
             }
+            
+            _lookThroughKingSquares.Add(kingPos + clampedDiff);
         }
         else
         {
@@ -208,10 +212,14 @@ public class LegalMoveLogic : MonoBehaviour
 
     public void AddPieceToLegalMoves(Piece piece)
     {
-        List<Move> moves = piece.GetPseudolegalMoves(WorldToBoard(piece.go.transform.position));
+        List<Move> moves = new();
         List<Vector2Int> positions = new();
-        foreach (Move move in moves)
+        foreach (Move move in piece.GetPseudolegalMoves(WorldToBoard(piece.go.transform.position), true))
+        {
+            if (move.isMoveLegal)
+                moves.Add(move);
             positions.Add(move.endSquare);
+        }
             
         if (piece.pieceData.color == PieceColor.White)
         {
@@ -253,15 +261,15 @@ public class LegalMoveLogic : MonoBehaviour
     
     public void ShowTargetedSquares(King targetedKing)
     {
-        HideTargetedSquares();
-        foreach (List<Vector2Int> posList in targetedKing.pieceData.color == PieceColor.White ? blackTargetedSquares.Values : whiteTargetedSquares.Values)
-        {
-            foreach (Vector2Int pos in posList)
-            {
-                GameObject go = Instantiate(_targetedSquareHighlighterPrefab, BoardToWorld(pos), Quaternion.identity, transform);
-                _targetedSquaresHighlighters.Add(go);
-            }
-        }
+        // HideTargetedSquares();
+        // foreach (List<Vector2Int> posList in targetedKing.pieceData.color == PieceColor.White ? blackTargetedSquares.Values : whiteTargetedSquares.Values)
+        // {
+        //     foreach (Vector2Int pos in posList)
+        //     {
+        //         GameObject go = Instantiate(_targetedSquareHighlighterPrefab, BoardToWorld(pos), Quaternion.identity, transform);
+        //         _targetedSquaresHighlighters.Add(go);
+        //     }
+        // }
     }
 
     public void HideTargetedSquares()

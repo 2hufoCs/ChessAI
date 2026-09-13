@@ -19,7 +19,7 @@ namespace Pieces
             _moveLogic = moveLogic;
         }
     
-        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
         {
             List<Move> moves = new();
             
@@ -31,18 +31,16 @@ namespace Pieces
                 // Exclude move if outside bounds
                 if (!IsInsideBounds(targetSquarePos)) continue;
                 
+                Move move = new Move(Vector2Int.RoundToInt(initialPos), targetSquarePos);
+                
                 // Exclude move if square has friendly piece
                 int targetSquare = _moveLogic.GetSquare(targetSquarePos);
                 PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
                     targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
-                    continue;
+                    move.isMoveLegal = false;
                 
-                moves.Add(new Move
-                {
-                    startSquare = Vector2Int.RoundToInt(initialPos),
-                    endSquare = targetSquarePos,
-                });
+                moves.Add(move);
             }
 
             return moves;
