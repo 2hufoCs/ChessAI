@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Pieces;
 
 public enum Directions { Right, Up, Left, Down, UpRight, UpLeft, DownLeft, DownRight}
 
@@ -43,7 +44,7 @@ public class PrecomputedMoveData
         }    
     }
 
-    public static List<Move> GenerateSlidingMoves(Piece piece, Vector2 startPosWorld)
+    public static List<Move> GenerateSlidingMoves(Piece piece, Vector2 startPosWorld, Dictionary<Vector2, Piece> pieces)
     {
         List<Move> moves = new List<Move>();
         Vector2Int startPos = Vector2Int.RoundToInt(startPosWorld);
@@ -53,6 +54,9 @@ public class PrecomputedMoveData
         
         for (int directionIndex = startDirIndex; directionIndex < endDirIndex; directionIndex++)
         {
+            List<Move> newDirMoves = new();
+            List<Vector2Int> piecePins = new();
+            Vector2Int pinnedPiecePos = -Vector2Int.one;
             for (int n = 0; n < numSquaresToEdges[startPos.x, startPos.y, directionIndex]; n++)
             {
                 Vector2Int targetSquare = startPos + directionOffsets[directionIndex] * (n + 1);
@@ -61,19 +65,38 @@ public class PrecomputedMoveData
                 PieceColor friendlyColor = piece.pieceData.color;
                 PieceColor enemyColor = friendlyColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
                 PieceColor targetSquareColor = pieceOnTargetSquare > 8 ? PieceColor.Black : pieceOnTargetSquare != 0 ? PieceColor.White : PieceColor.None;
+                PieceType targetType = (PieceType)(pieceOnTargetSquare);
 
                 Move move = new(startPos, targetSquare);
+                
+                // If target square has enemy king, and there's an enemy piece in-between, pin piece
+                if (targetType == PieceType.King && targetSquareColor == enemyColor && pinnedPiecePos != -Vector2Int.one)
+                {
+                    Debug.Log($"{friendlyColor} {piece.pieceData.type} is pinning {targetSquareColor} {targetType}, updating pins list");
+                    piecePins.Add(startPos);
+                    LegalMoveLogic.pins[pieces[pinnedPiecePos]] = piecePins;
+                    break;
+                }
                 
                 // Blocked by friendly piece, can't move any further in that direction
                 if (friendlyColor == targetSquareColor)
                     move.isMoveLegal = false;
+
+                // Pin up to 1 piece, continue calculating afterwards
+                if (enemyColor == targetSquareColor)
+                {
+                    if (pinnedPiecePos != -Vector2Int.one) break; // only a single piece can be pinned in 1 direction
+                    pinnedPiecePos = targetSquare;
+                }
                 
-                moves.Add(move);
+                if (pinnedPiecePos != -Vector2Int.one) newDirMoves.Add(move);
+                piecePins.Add(targetSquare);
                 
                 // Can't move any further in this direction after capturing opponent's piece
-                if (targetSquareColor != PieceColor.None)
+                if (targetSquareColor == friendlyColor)
                     break;
             }
+            moves.AddRange(newDirMoves);
         }
 
         return moves;

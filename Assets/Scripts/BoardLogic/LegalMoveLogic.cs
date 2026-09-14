@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework.Constraints;
 using Pieces;
 using UnityEngine;
@@ -22,6 +23,9 @@ public class LegalMoveLogic : MonoBehaviour
     private bool _canBlockCheck;
     private List<Vector2Int> _blockCheckSquares = new();
     private List<Vector2Int> _lookThroughKingSquares = new();
+    
+    // Used to deal with pins
+    public static Dictionary<Piece, List<Vector2Int>> pins = new();
     
     // For human play
     [HideInInspector] public Piece heldPiece;
@@ -49,20 +53,32 @@ public class LegalMoveLogic : MonoBehaviour
     {
         Dictionary<Piece, List<Move>> pseudoLegalMoves = GetPseudoLegalMoves(pieces, kingToPlay);
         Dictionary<Piece, List<Move>> legalMoves = new();
+        pins = new();
+        
 
         bool isWhitePlaying = kingToPlay.pieceData.color == PieceColor.White;
-
-        if (!kingToPlay.isInCheck)
-        {
-            legalMoves = new(pseudoLegalMoves);
-            legalMoves.Remove(kingToPlay);
-        }
         
         // Only allow moves that go out of check
         foreach (KeyValuePair<Piece, List<Move>> pieceMoves in pseudoLegalMoves)
         {
+            // Remove
+            List<Move> movesWithoutPins = new();
+            if (pins.TryGetValue(pieceMoves.Key, out List<Vector2Int> posToRemove))
+            {
+                // Piece is located in pins dict, only allow moves inside list
+                foreach (Move move in pieceMoves.Value)
+                {
+                    if (pins[pieceMoves.Key].Contains(move.endSquare))
+                        movesWithoutPins.Add(move);
+                }
+            }
+            else movesWithoutPins = new(pieceMoves.Value);
+            
             if (!kingToPlay.isInCheck && pieceMoves.Key != kingToPlay)
+            {
+                //legalMoves[pieceMoves.Key] = 
                 continue;
+            }
             
             List<Move> newMoves = new();
             foreach (Move move in pieceMoves.Value)
@@ -83,6 +99,9 @@ public class LegalMoveLogic : MonoBehaviour
             }
             legalMoves.Add(pieceMoves.Key, newMoves);
         }
+        
+        // For when king is in check
+        if (kingToPlay.isInCheck)
 
         // TODO: pinned pieces
 
@@ -146,6 +165,7 @@ public class LegalMoveLogic : MonoBehaviour
         {
             ShowTargetedSquares(targetKing);
             ShowBlockOptions();
+            ShowPins();
         }
         return result;
     }
@@ -295,6 +315,26 @@ public class LegalMoveLogic : MonoBehaviour
         foreach (GameObject go in _blockOptionsHighlighters)
             Destroy(go);
         _blockOptionsHighlighters.Clear();
+    }
+
+    public void ShowPins()
+    {
+        HidePins();
+        foreach (List<Vector2Int> positions in pins.Values)
+        {
+            foreach (Vector2Int pos in positions)
+            {
+                GameObject go = Instantiate(_pinHighlighterPrefab, BoardToWorld(pos), Quaternion.identity, transform);
+                _pinHighlighters.Add(go);
+            }
+        }
+    }
+
+    public void HidePins()
+    {
+        foreach (GameObject go in _pinHighlighters)
+            Destroy(go);
+        _pinHighlighters.Clear();
     }
     
     Vector2 BoardToWorld(Vector2 pos)

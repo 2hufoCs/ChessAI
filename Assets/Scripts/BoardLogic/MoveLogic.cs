@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System.Data;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using DG.Tweening;
 using NaughtyAttributes;
 using Pieces;
@@ -28,6 +29,9 @@ public class MoveLogic : MonoBehaviour
     private King _blackKing;
     private Pawn _heldPawn; // Used to calculate en-passant 
 
+    private Vector2Int[] _whiteRooksPos;
+    private Vector2Int[] _blackRooksPos;
+
     [Header("References")]
     [SerializeField] private GameObject _piecePrefab;
     [SerializeField] private List<PieceData> _piecesData = new ();
@@ -45,6 +49,7 @@ public class MoveLogic : MonoBehaviour
     {
         _legalLogic = LegalMoveLogic.Instance;
         
+        InitializeBaseCastlingData();
         LoadPositionFromFen(_basePositionFen);
         
         // Precomputed stuff
@@ -68,6 +73,13 @@ public class MoveLogic : MonoBehaviour
     void RecomputeTargetedSquares()
     {
         _legalLogic.GetAllLegalMoves(_pieces, _colorToPlay ==  PieceColor.White ? _whiteKing : _blackKing);
+    }
+
+    void InitializeBaseCastlingData()
+    {
+        int flipped = BoardSettings.Instance.boardFlipped ? 1 : 0;
+        _whiteRooksPos = new[] { new Vector2Int(0, flipped * 7), new Vector2Int(0, flipped * 7) };
+        _blackRooksPos = new[] { new Vector2Int(0, (1 - flipped) * 7), new Vector2Int(0, (1 - flipped) * 7) };
     }
 
     void Update()
@@ -290,6 +302,31 @@ public class MoveLogic : MonoBehaviour
                 _whiteKing = king;
             else _blackKing = king;
         }
+        
+        // Check if rook or king has moved, prevent castling
+        if (piece.type == PieceType.Rook)
+        {
+            if (piece.color == PieceColor.White && !_whiteRooksPos.Contains(pos) ||
+                piece.color == PieceColor.Black && !_blackRooksPos.Contains(pos))
+            {
+                //Debug.Log($"{piece.color} {piece.type} at {pos} not on starting square, preventing castling");
+                Rook rook = (Rook)newPiece;
+                rook.hasMoved = true;
+            }
+        }
+
+        if (piece.type == PieceType.King)
+        {
+            Vector2Int whiteKingBasePos = !BoardSettings.Instance.boardFlipped ? new Vector2Int(4, 0) : new Vector2Int(4, 7);
+            Vector2Int blackKingBasePos = !BoardSettings.Instance.boardFlipped ? new Vector2Int(4, 7) : new Vector2Int(4, 0);
+            if (piece.color == PieceColor.White && whiteKingBasePos != pos ||
+                piece.color == PieceColor.Black && blackKingBasePos != pos)
+            {
+                //Debug.Log($"{piece.color} {piece.type} at {pos} not on starting square, preventing castling");
+                King king = (King)newPiece;
+                king.hasMoved = true;
+            }
+        }
     }
 
     void InitializeKingCastling()
@@ -303,7 +340,7 @@ public class MoveLogic : MonoBehaviour
         _blackKing.AssignRooks(GetRooks(PieceColor.Black));
     }
     
-    Piece GetPieceFromGameObject(GameObject pieceObject)
+    public Piece GetPieceFromGameObject(GameObject pieceObject)
     {
         // Get corresponding data of released piece
         Sprite sprite = pieceObject.GetComponent<SpriteRenderer>().sprite;
@@ -333,13 +370,13 @@ public class MoveLogic : MonoBehaviour
                 newPiece = new Knight(data, pieceObject, this);
                 break;
             case PieceType.Bishop:
-                newPiece = new Bishop(data, pieceObject);
+                newPiece = new Bishop(data, pieceObject, _pieces);
                 break;
             case PieceType.Rook:
-                newPiece = new Rook(data, pieceObject);
+                newPiece = new Rook(data, pieceObject, _pieces);
                 break;
             case PieceType.Queen:
-                newPiece = new Queen(data, pieceObject);
+                newPiece = new Queen(data, pieceObject, _pieces);
                 break;
             case PieceType.King:
                 newPiece = new King(data, pieceObject, this);
@@ -494,17 +531,18 @@ public class MoveLogic : MonoBehaviour
                 rank--;
                 continue;
             }
+
             if (char.IsDigit(symbol))
-                file += (int) char.GetNumericValue(symbol);
-            else
             {
-                int pieceColor = (char.IsUpper(symbol)) ? (int)PieceColor.White : (int)PieceColor.Black;
-                int pieceType = pieceTypeFromSymbol[char.ToLower(symbol)];
-                
-                _board[rank, file] = pieceType + pieceColor;
-                SpawnPiece(GetPieceData(pieceType, pieceColor), new Vector2Int(file, rank));
-                file++;
+                file += (int) char.GetNumericValue(symbol);
+                continue;
             }
+            int pieceColor = char.IsUpper(symbol) ? (int)PieceColor.White : (int)PieceColor.Black;
+            int pieceType = pieceTypeFromSymbol[char.ToLower(symbol)];
+            
+            _board[rank, file] = pieceType + pieceColor;
+            SpawnPiece(GetPieceData(pieceType, pieceColor), new Vector2Int(file, rank));
+            file++;
         }
     }
 
