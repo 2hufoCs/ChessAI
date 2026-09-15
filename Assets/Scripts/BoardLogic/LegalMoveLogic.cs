@@ -4,9 +4,9 @@ using NUnit.Framework.Constraints;
 using Pieces;
 using UnityEngine;
 
-public class LegalMoveGenerator : MonoBehaviour
+public class LegalMoveLogic : MonoBehaviour
 {
-    public static LegalMoveGenerator Instance { get;  private set; }
+    public static LegalMoveLogic Instance { get;  private set; }
 
     [HideInInspector] public Dictionary<Piece, List<Vector2Int>> whiteTargetedSquares = new();
     [HideInInspector] public Dictionary<Piece, List<Vector2Int>> blackTargetedSquares = new();
@@ -50,7 +50,7 @@ public class LegalMoveGenerator : MonoBehaviour
         Instance = this;
     }
 
-    public void GetAllLegalMoves(Dictionary<Vector2, Piece> pieces, King kingToPlay)
+    public Dictionary<Piece, List<Move>> GetAllLegalMoves(Dictionary<Vector2, Piece> pieces, King kingToPlay)
     {
         pins = new();
         Dictionary<Piece, List<Move>> pseudoLegalMoves = GetPseudoLegalMoves(pieces, kingToPlay);
@@ -112,6 +112,8 @@ public class LegalMoveGenerator : MonoBehaviour
         if (isWhitePlaying)
             whiteLegalMoves =  new(legalMoves);
         else blackLegalMoves = new(legalMoves);
+
+        return legalMoves;
     }
     
     public Dictionary<Piece, List<Move>> GetPseudoLegalMoves(Dictionary<Vector2, Piece> pieces, King targetKing)

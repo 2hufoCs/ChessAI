@@ -12,21 +12,22 @@ using Pieces;
 public enum PieceType { None, Pawn, Knight, Bishop, Rook, Queen, King }
 public enum PieceColor { None = -1, White = 0, Black = 8}
 
-public class MoveGenerator : MonoBehaviour
+public class MoveLogic : MonoBehaviour
 {
     private readonly int[,] _board = new int[8, 8];
-    private readonly Dictionary<Vector2, Piece> _pieces = new();
+    public readonly Dictionary<Vector2, Piece> _pieces = new();
+    private readonly Stack<Move> _movesPlayed = new();
     
     [Header("Main parameters")] 
-    [SerializeField] private PieceColor _colorToPlay = PieceColor.White;
+    public PieceColor _colorToPlay = PieceColor.White;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     public bool IsGamePaused { get => _isGamePaused; set => Pause(value); }
     private bool _isGamePaused;
     
     // Keep track of both kings
-    private King _whiteKing;
-    private King _blackKing;
+    public King _whiteKing;
+    public King _blackKing;
     private Pawn _heldPawn; // Used to calculate en-passant 
 
     private Vector2Int[] _whiteRooksPos;
@@ -42,12 +43,12 @@ public class MoveGenerator : MonoBehaviour
     [SerializeField] private GameObject _blackPromotionChoicePrefab;
     private GameObject _spawnedPromotionChoice;
     
-    private LegalMoveGenerator _legalGenerator;
+    private LegalMoveLogic _legalGenerator;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        _legalGenerator = LegalMoveGenerator.Instance;
+        _legalGenerator = LegalMoveLogic.Instance;
         
         InitializeBaseCastlingData();
         LoadPositionFromFen(_basePositionFen);
@@ -114,7 +115,7 @@ public class MoveGenerator : MonoBehaviour
             {
                 if (pieceToDrag.pieceData.color != _colorToPlay) return;
                 InitializeDraggedPiece(pieceToDrag, snappedWholePos);
-                if (BoardSettings.Instance.debugLegalMoves) LegalMoveGenerator.Instance.ShowLegalMoves();
+                if (BoardSettings.Instance.debugLegalMoves) LegalMoveLogic.Instance.ShowLegalMoves();
             }
         }
         // State 3 - dropping piece
@@ -140,7 +141,7 @@ public class MoveGenerator : MonoBehaviour
         _legalGenerator.heldPiece = null;
     }
 
-    void MakeMove(Piece piece, Move move)
+    public void MakeMove(Piece piece, Move move)
     {
         // Before playing move, promotion check
         if (PromotionCheck(_legalGenerator.heldPiece, move)) return;
@@ -157,7 +158,8 @@ public class MoveGenerator : MonoBehaviour
         {
             if (pieceToDestroy != piece)
             {
-                Destroy(_pieces[move.endSquare].go);
+                move.pieceOnTargetSquare = pieceToDestroy;
+                _pieces[move.endSquare].go.SetActive(false);
                 _pieces.Remove(move.endSquare);
             }
         }
@@ -165,6 +167,7 @@ public class MoveGenerator : MonoBehaviour
         SpecialPieceMoves(piece, move);
             
         _pieces.Add(move.endSquare, piece);
+        _movesPlayed.Push(move);
         
         piece.go.transform.position = BoardToWorld(move.endSquare);
         if (move.rookToCastle == null)
@@ -172,6 +175,36 @@ public class MoveGenerator : MonoBehaviour
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
             ActionsBus.OnPlayerMoved();
         }
+    }
+
+    public void UnmakeMove(Piece piece, Move move)
+    {
+        PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
+        int value = (int)data.type + (int)data.color;
+        int targetValue = move.pieceOnTargetSquare != null ? 
+            (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
+        
+        // Update board matrix
+        _board[move.startSquare.y, move.startSquare.x] = value;
+        _board[move.endSquare.y, move.endSquare.x] = targetValue;
+
+        _pieces.Remove(move.endSquare);
+        
+        // Revive piece at end square
+        if (targetValue > 0)
+        {
+            _pieces[move.endSquare].go.SetActive(true);
+            _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
+        }
+
+        _pieces.Add(move.startSquare, piece);
+        piece.go.transform.position = BoardToWorld(move.endSquare);
+    }
+
+    [Button]
+    void UnmakeLastMove()
+    {
+        //UnmakeMove(_movesPlayed.Pop());
     }
 
     void SpecialPieceMoves(Piece piece, Move move)
@@ -578,6 +611,7 @@ public struct Move : IEquatable<Move>
 {
     public Vector2Int startSquare;
     public Vector2Int endSquare;
+    public Piece pieceOnTargetSquare;
 
     public bool isMoveLegal;
     
@@ -592,6 +626,7 @@ public struct Move : IEquatable<Move>
     {
         this.startSquare = startSquare;
         this.endSquare = endSquare;
+        pieceOnTargetSquare = null;
 
         isMoveLegal = true;
         enPassantCapture = null;

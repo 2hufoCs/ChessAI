@@ -8,15 +8,15 @@ namespace Pieces
         public bool isInCheck;
         
         private Dictionary<Vector2, Rook> _rooks;
-        private MoveGenerator _moveGenerator;
+        private MoveLogic _moveLogic;
         
         public bool hasMoved;
 
-        public King(PieceData pieceData, GameObject go, MoveGenerator moveLogic)
+        public King(PieceData pieceData, GameObject go, MoveLogic moveLogic)
         {
             this.pieceData = pieceData;
             this.go = go;
-            _moveGenerator = moveLogic;
+            _moveLogic = moveLogic;
         }
 
         public void AssignRooks(Dictionary<Vector2, Rook> rooks)
@@ -40,7 +40,7 @@ namespace Pieces
                 Move move = new Move(snappedWholePos, targetSquarePos);
                 
                 // Move not legal if square is a friendly piece
-                int targetSquare = _moveGenerator.GetSquare(targetSquarePos);
+                int targetSquare = _moveLogic.GetSquare(targetSquarePos);
                 PieceColor targetColor = targetSquare > 8 ? PieceColor.Black : targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
                     move.isMoveLegal = false;
@@ -73,7 +73,7 @@ namespace Pieces
                     Vector2Int pos = new Vector2Int(i, kingSquarePos.y);
                     
                     // Rule n°2: no pieces between king and rook
-                    if (_moveGenerator.GetSquare(pos) != 0 && i != kingSquarePos.x)
+                    if (_moveLogic.GetSquare(pos) != 0 && i != kingSquarePos.x)
                     {
                         stopCastling = true;
                         break;
@@ -81,7 +81,7 @@ namespace Pieces
                     
                     // Rule n°3: path between king and rook can't be targeted by enemy square
                     Dictionary<Piece, List<Vector2Int>> enemyTargetedSquares = pieceData.color == PieceColor.Black ? 
-                        LegalMoveGenerator.Instance.whiteTargetedSquares :  LegalMoveGenerator.Instance.blackTargetedSquares;
+                        LegalMoveLogic.Instance.whiteTargetedSquares :  LegalMoveLogic.Instance.blackTargetedSquares;
                     foreach (List<Vector2Int> pieceTargets in enemyTargetedSquares.Values)
                     {
                         if (pieceTargets.Contains(pos))

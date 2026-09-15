@@ -8,14 +8,14 @@ namespace Pieces
         public bool disableEnPassantNextTurn;
         public bool doubleMovedLastTurn;
         
-        private MoveGenerator _moveGenerator;
+        private MoveLogic _moveLogic;
         private Dictionary<Vector2, Piece> _pieces = new();
         
-        public Pawn(PieceData pieceData, GameObject go, MoveGenerator moveLogic, Dictionary<Vector2, Piece> pieces)
+        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2, Piece> pieces)
         {
             this.pieceData = pieceData;
             this.go = go;
-            _moveGenerator = moveLogic;
+            _moveLogic = moveLogic;
             _pieces = pieces;
         }
     
@@ -81,7 +81,7 @@ namespace Pieces
             if (!IsInsideBounds(targetSquarePos)) return false;
             
             // Exclude move if square has friendly piece
-            int targetSquare = _moveGenerator.GetSquare(targetSquarePos);
+            int targetSquare = _moveLogic.GetSquare(targetSquarePos);
             Move move = new Move(Vector2Int.RoundToInt(startPos), targetSquarePos);
             if (!haveToTake)
             {
@@ -106,7 +106,7 @@ namespace Pieces
         {
             if (!IsInsideBounds(pos)) return null;
 
-            int square = _moveGenerator.GetSquare(pos);
+            int square = _moveLogic.GetSquare(pos);
             if (square is (int)PieceType.Pawn + (int)PieceColor.White or (int)PieceType.Pawn + (int)PieceColor.Black)
                 return (Pawn)_pieces[pos];
             return null;
