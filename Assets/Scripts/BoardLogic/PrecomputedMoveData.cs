@@ -13,15 +13,15 @@ public class PrecomputedMoveData
     };
     public static readonly int[,,] numSquaresToEdges = new int[8, 8, 8];
 
-    private static MoveLogic _moveLogic;
+    private static MoveGenerator _moveGenerator;
 
     /// <summary>
     /// Precomputes, for each square, how much distance there is with the edge of the board, in all directions.
     /// Allows for incredible performance optimization for sliding pieces (bishops/rooks/queens) instead of recalculating each time.
     /// </summary>
-    public PrecomputedMoveData(MoveLogic moveLogic)
+    public PrecomputedMoveData(MoveGenerator moveLogic)
     {
-        _moveLogic = moveLogic;
+        _moveGenerator = moveLogic;
         for (int file = 0; file < 8; file++)
         {
             for (int rank = 0; rank < 8; rank++)
@@ -60,27 +60,28 @@ public class PrecomputedMoveData
             for (int n = 0; n < numSquaresToEdges[startPos.x, startPos.y, directionIndex]; n++)
             {
                 Vector2Int targetSquare = startPos + directionOffsets[directionIndex] * (n + 1);
-                int pieceOnTargetSquare = _moveLogic.GetSquare(targetSquare);
+                int pieceOnTargetSquare = _moveGenerator.GetSquare(targetSquare);
 
                 PieceColor friendlyColor = piece.pieceData.color;
                 PieceColor enemyColor = friendlyColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
                 PieceColor targetSquareColor = pieceOnTargetSquare > 8 ? PieceColor.Black : pieceOnTargetSquare != 0 ? PieceColor.White : PieceColor.None;
-                PieceType targetType = (PieceType)(pieceOnTargetSquare);
+                PieceType targetType = pieceOnTargetSquare > 8 ? (PieceType)(pieceOnTargetSquare - 8) : (PieceType)(pieceOnTargetSquare);
 
                 Move move = new(startPos, targetSquare);
-                
-                // If target square has enemy king, and there's an enemy piece in-between, pin piece
+
                 if (targetType == PieceType.King && targetSquareColor == enemyColor && pinnedPiecePos != -Vector2Int.one)
                 {
-                    Debug.Log($"{friendlyColor} {piece.pieceData.type} is pinning {targetSquareColor} {targetType}, updating pins list");
                     piecePins.Add(startPos);
-                    LegalMoveLogic.pins[pieces[pinnedPiecePos]] = piecePins;
+                    LegalMoveGenerator.pins[pieces[pinnedPiecePos]] = piecePins;
                     break;
                 }
                 
                 // Blocked by friendly piece, can't move any further in that direction
                 if (friendlyColor == targetSquareColor)
                     move.isMoveLegal = false;
+                
+                if (pinnedPiecePos == -Vector2Int.one) newDirMoves.Add(move);
+                piecePins.Add(targetSquare);
 
                 // Pin up to 1 piece, continue calculating afterwards
                 if (enemyColor == targetSquareColor)
@@ -88,9 +89,6 @@ public class PrecomputedMoveData
                     if (pinnedPiecePos != -Vector2Int.one) break; // only a single piece can be pinned in 1 direction
                     pinnedPiecePos = targetSquare;
                 }
-                
-                if (pinnedPiecePos != -Vector2Int.one) newDirMoves.Add(move);
-                piecePins.Add(targetSquare);
                 
                 // Can't move any further in this direction after capturing opponent's piece
                 if (targetSquareColor == friendlyColor)
@@ -105,7 +103,6 @@ public class PrecomputedMoveData
     static Vector2 WorldToBoard(Vector2 pos)
     {
         Vector2 snappedPos = new Vector2(pos.x > 0 ? (int)pos.x + 1 : (int)pos.x, pos.y > 0 ? (int)pos.y + 1 : (int)pos.y);
-        Debug.Log("snapped pos in world is " +  snappedPos);
-        return snappedPos + Vector2Int.RoundToInt(_moveLogic.transform.position) + Vector2Int.one * 3; // Offset due to pivot point being in center of the board
+        return snappedPos + Vector2Int.RoundToInt(_moveGenerator.transform.position) + Vector2Int.one * 3; // Offset due to pivot point being in center of the board
     }
 }

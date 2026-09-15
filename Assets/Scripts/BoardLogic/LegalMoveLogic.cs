@@ -4,9 +4,9 @@ using NUnit.Framework.Constraints;
 using Pieces;
 using UnityEngine;
 
-public class LegalMoveLogic : MonoBehaviour
+public class LegalMoveGenerator : MonoBehaviour
 {
-    public static LegalMoveLogic Instance { get;  private set; }
+    public static LegalMoveGenerator Instance { get;  private set; }
 
     [HideInInspector] public Dictionary<Piece, List<Vector2Int>> whiteTargetedSquares = new();
     [HideInInspector] public Dictionary<Piece, List<Vector2Int>> blackTargetedSquares = new();
@@ -21,6 +21,7 @@ public class LegalMoveLogic : MonoBehaviour
     
     // Used to deal with checks
     private bool _canBlockCheck;
+    private bool _canTakeChecker;
     private List<Vector2Int> _blockCheckSquares = new();
     private List<Vector2Int> _lookThroughKingSquares = new();
     
@@ -51,19 +52,20 @@ public class LegalMoveLogic : MonoBehaviour
 
     public void GetAllLegalMoves(Dictionary<Vector2, Piece> pieces, King kingToPlay)
     {
+        pins = new();
         Dictionary<Piece, List<Move>> pseudoLegalMoves = GetPseudoLegalMoves(pieces, kingToPlay);
         Dictionary<Piece, List<Move>> legalMoves = new();
-        pins = new();
         
-
         bool isWhitePlaying = kingToPlay.pieceData.color == PieceColor.White;
         
-        // Only allow moves that go out of check
+        // Iterate through every piece that has pseudo legal moves
         foreach (KeyValuePair<Piece, List<Move>> pieceMoves in pseudoLegalMoves)
         {
-            // Remove
+            // For pieces that are pinned
             List<Move> movesWithoutPins = new();
-            if (pins.TryGetValue(pieceMoves.Key, out List<Vector2Int> posToRemove))
+            
+            // For whatever reason, this doesn't work
+            if (pins.TryGetValue(goToPieces[pieceMoves.Key.go], out List<Vector2Int> posToRemove))
             {
                 // Piece is located in pins dict, only allow moves inside list
                 foreach (Move move in pieceMoves.Value)
@@ -73,15 +75,16 @@ public class LegalMoveLogic : MonoBehaviour
                 }
             }
             else movesWithoutPins = new(pieceMoves.Value);
+            //Debug.Log($"for {pieceMoves.Key.pieceData.color} {pieceMoves.Key.pieceData.type}, how many moves including pins: {movesWithoutPins.Count}");
             
             if (!kingToPlay.isInCheck && pieceMoves.Key != kingToPlay)
             {
-                //legalMoves[pieceMoves.Key] = 
+                legalMoves[pieceMoves.Key] = movesWithoutPins;
                 continue;
             }
             
             List<Move> newMoves = new();
-            foreach (Move move in pieceMoves.Value)
+            foreach (Move move in movesWithoutPins)
             {
                 // If piece is king, simply need to move to non-targeted square
                 if (pieceMoves.Key == kingToPlay)
@@ -91,7 +94,13 @@ public class LegalMoveLogic : MonoBehaviour
                     continue;
                 }
 
-                if (!_canBlockCheck || !kingToPlay.isInCheck) continue;
+                if (!_canBlockCheck || !kingToPlay.isInCheck)
+                {
+                    if (_blockCheckSquares[0] == move.endSquare)    
+                        newMoves.Add(move);
+                    continue;
+                }
+                    
                 
                 // For other pieces, must reach one of block options
                 if (_blockCheckSquares.Contains(move.endSquare))
@@ -99,11 +108,6 @@ public class LegalMoveLogic : MonoBehaviour
             }
             legalMoves.Add(pieceMoves.Key, newMoves);
         }
-        
-        // For when king is in check
-        if (kingToPlay.isInCheck)
-
-        // TODO: pinned pieces
 
         if (isWhitePlaying)
             whiteLegalMoves =  new(legalMoves);
@@ -122,6 +126,8 @@ public class LegalMoveLogic : MonoBehaviour
         int enemyCheckCount = 0;
         targetKing.isInCheck = false;
         _canBlockCheck = true;
+        _canTakeChecker = true;
+        
         _blockCheckSquares.Clear();
         _lookThroughKingSquares.Clear();
         
@@ -156,6 +162,7 @@ public class LegalMoveLogic : MonoBehaviour
             targetKing.isInCheck = true;
             enemyCheckCount++;
             _canBlockCheck &= enemyCheckCount < 2;
+            _canTakeChecker &= enemyCheckCount < 2;
             
             GetKingLinesOfAttack(pieces, targetKing, piece);
         }
@@ -200,10 +207,7 @@ public class LegalMoveLogic : MonoBehaviour
             _lookThroughKingSquares.Add(kingPos + clampedDiff);
         }
         else
-        {
             _canBlockCheck = false;
-            Debug.Log($"getting checked by {piece.Value.pieceData.type}, can't dodge check");
-        }
     }
 
     public bool IsSquareTargeted(Vector2Int pos, PieceColor friendlyColor)

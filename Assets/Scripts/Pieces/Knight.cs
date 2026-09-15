@@ -10,13 +10,13 @@ namespace Pieces
             new Vector2(1, 2), new Vector2(2, 1),  new Vector2(2, -1),   new Vector2(1, -2),
             new Vector2(-1, -2), new Vector2(-2, -1), new Vector2(-2, 1),  new Vector2(-1, 2)
         };
-        private MoveLogic _moveLogic;
+        private MoveGenerator _moveGenerator;
         
-        public Knight(PieceData pieceData, GameObject go,  MoveLogic moveLogic)
+        public Knight(PieceData pieceData, GameObject go,  MoveGenerator moveLogic)
         {
             this.pieceData = pieceData;
             this.go = go;
-            _moveLogic = moveLogic;
+            _moveGenerator = moveLogic;
         }
     
         public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
@@ -34,7 +34,7 @@ namespace Pieces
                 Move move = new Move(Vector2Int.RoundToInt(initialPos), targetSquarePos);
                 
                 // Exclude move if square has friendly piece
-                int targetSquare = _moveLogic.GetSquare(targetSquarePos);
+                int targetSquare = _moveGenerator.GetSquare(targetSquarePos);
                 PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
                     targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
