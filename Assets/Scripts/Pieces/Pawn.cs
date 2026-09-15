@@ -8,8 +8,8 @@ namespace Pieces
         public bool disableEnPassantNextTurn;
         public bool doubleMovedLastTurn;
         
-        private MoveLogic _moveLogic;
-        private Dictionary<Vector2, Piece> _pieces = new();
+        public MoveLogic _moveLogic;
+        public Dictionary<Vector2, Piece> _pieces = new();
         
         public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2, Piece> pieces)
         {
@@ -18,7 +18,31 @@ namespace Pieces
             _moveLogic = moveLogic;
             _pieces = pieces;
         }
-    
+
+        public override Piece DeepCopy(Piece pieceToCopy, Piece pieceToOverwrite = null)
+        {
+            Pawn p1 = (Pawn)pieceToCopy;
+
+            if (pieceToOverwrite == null)
+            {
+                Pawn pawn = new(p1.pieceData, p1.go, p1._moveLogic, p1._pieces)
+                {
+                    disableEnPassantNextTurn = p1.disableEnPassantNextTurn,
+                    doubleMovedLastTurn = p1.doubleMovedLastTurn
+                };
+                return pawn;
+            }
+            
+            Pawn p2 = (Pawn)pieceToCopy;
+            p2.pieceData = p1.pieceData;
+            p2.go = p1.go;
+            p2._moveLogic = p1._moveLogic;
+            p2._pieces = p1._pieces;
+            p2.disableEnPassantNextTurn = p1.disableEnPassantNextTurn;
+            p2.doubleMovedLastTurn = p1.doubleMovedLastTurn;
+            return p2;
+        }
+
         public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
         {
             List<Move> moves = new();
@@ -57,7 +81,7 @@ namespace Pieces
             {
                 if (leftPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = leftPawn.go};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = leftPawn};
                     //Debug.Log("can make en passant, go to kill would be " + newMove.enPassantCapture);
                     moves.Add(newMove);
                 }
@@ -68,7 +92,7 @@ namespace Pieces
             {
                 if (rightPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = rightPawn.go};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = rightPawn};
                     moves.Add(newMove);
                 }
             }

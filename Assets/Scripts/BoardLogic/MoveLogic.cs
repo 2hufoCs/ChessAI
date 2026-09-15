@@ -16,7 +16,10 @@ public class MoveLogic : MonoBehaviour
 {
     private readonly int[,] _board = new int[8, 8];
     public readonly Dictionary<Vector2, Piece> _pieces = new();
-    private readonly Stack<Move> _movesPlayed = new();
+    public readonly Dictionary<Vector2, Piece> _piecesAliveAndDead = new();
+    
+    private readonly Stack<KeyValuePair<Move, Piece>> _movesPlayed = new();
+    private readonly Stack<KeyValuePair<Move, Piece>> _undoMoves = new();
     
     [Header("Main parameters")] 
     public PieceColor _colorToPlay = PieceColor.White;
@@ -79,8 +82,8 @@ public class MoveLogic : MonoBehaviour
     void InitializeBaseCastlingData()
     {
         int flipped = BoardSettings.Instance.boardFlipped ? 1 : 0;
-        _whiteRooksPos = new[] { new Vector2Int(0, flipped * 7), new Vector2Int(0, flipped * 7) };
-        _blackRooksPos = new[] { new Vector2Int(0, (1 - flipped) * 7), new Vector2Int(0, (1 - flipped) * 7) };
+        _whiteRooksPos = new[] { new Vector2Int(0, flipped * 7), new Vector2Int(7, flipped * 7) };
+        _blackRooksPos = new[] { new Vector2Int(0, (1 - flipped) * 7), new Vector2Int(7, (1 - flipped) * 7) };
     }
 
     void Update()
@@ -141,10 +144,10 @@ public class MoveLogic : MonoBehaviour
         _legalGenerator.heldPiece = null;
     }
 
-    public void MakeMove(Piece piece, Move move)
+    public void MakeMove(Piece piece, Move move, bool trackMove = true)
     {
         // Before playing move, promotion check
-        if (PromotionCheck(_legalGenerator.heldPiece, move)) return;
+        if (PromotionCheck(piece, move)) return;
         
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
@@ -166,8 +169,18 @@ public class MoveLogic : MonoBehaviour
         
         SpecialPieceMoves(piece, move);
             
-        _pieces.Add(move.endSquare, piece);
-        _movesPlayed.Push(move);
+        _pieces.TryAdd(move.endSquare, piece);
+        if (trackMove)
+        {
+            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece.DeepCopy(piece, piece)));
+            _undoMoves.Clear();
+            Piece target = move.pieceOnTargetSquare;
+            if (target != null)
+                move.pieceOnTargetSquare = target.DeepCopy(target, target);
+            Piece otherTarget = move.enPassantCapture;
+            if (otherTarget != null)
+                move.enPassantCapture = otherTarget.DeepCopy(otherTarget, otherTarget);
+        }
         
         piece.go.transform.position = BoardToWorld(move.endSquare);
         if (move.rookToCastle == null)
@@ -175,36 +188,92 @@ public class MoveLogic : MonoBehaviour
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
             ActionsBus.OnPlayerMoved();
         }
+        //Debug.Log("at the end of making move, does it still have rook to castle: " + move.rookToCastle);
+        //else MakeMove(move.rookToCastle, new Move(move.rookStartSquare, move.rookEndSquare));
     }
 
     public void UnmakeMove(Piece piece, Move move)
     {
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
-        int targetValue = move.pieceOnTargetSquare != null ? 
-            (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
+        
+        bool enPassant = move.enPassantCapture != null;
+        int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
+            move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
         
         // Update board matrix
         _board[move.startSquare.y, move.startSquare.x] = value;
         _board[move.endSquare.y, move.endSquare.x] = targetValue;
-
+        
         _pieces.Remove(move.endSquare);
+        _pieces.TryAdd(move.startSquare, piece);
+        piece.go.transform.position = BoardToWorld(move.startSquare);
+        //Debug.Log($"start: {move.startSquare} end: {move.endSquare}");
         
         // Revive piece at end square
         if (targetValue > 0)
         {
-            _pieces[move.endSquare].go.SetActive(true);
-            _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
+            if (enPassant)
+                move.enPassantCapture.go.SetActive(true);
+            else
+            {
+                move.pieceOnTargetSquare.go.SetActive(true);
+                _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
+            }
         }
 
-        _pieces.Add(move.startSquare, piece);
-        piece.go.transform.position = BoardToWorld(move.endSquare);
+        // debug
+        if (enPassant)
+        {
+            Pawn pawn = (Pawn)move.enPassantCapture;
+            Debug.Log($"en passant capture; double moved last turn: {pawn.doubleMovedLastTurn}, disable en passant next turn:{pawn.disableEnPassantNextTurn}");
+        }
+        
+        
+        // Also undo special piece checks
+        if (move.rookToCastle == null)
+        {
+            _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
+            ActionsBus.OnPlayerMoved();
+        }
+        else
+        {
+            UnmakeMove(move.rookToCastle, new Move(move.rookStartSquare, move.rookEndSquare));
+            move.rookToCastle.hasMoved = false;
+        }
+    }
+    
+    public void UnmakeLastMove()
+    {
+        if (_movesPlayed.Count == 0) return;
+        
+        KeyValuePair<Move, Piece> move = _movesPlayed.Pop();
+        Debug.Log("unmaking move, did it have rook to castle: " + move.Key.rookToCastle);
+        _undoMoves.Push(move);
+
+        // Pawn pawn = (Pawn)move.Value;
+        // if (pawn.pieceData.color == PieceColor.Black)
+        //     Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn);
+        UnmakeMove(move.Value, move.Key);
+        // if (pawn.pieceData.color == PieceColor.Black)
+        //     Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
     }
 
-    [Button]
-    void UnmakeLastMove()
+    
+    public void RedoLastMove()
     {
-        //UnmakeMove(_movesPlayed.Pop());
+        if (_undoMoves.Count == 0) return;
+        
+        KeyValuePair<Move, Piece> move = _undoMoves.Pop();
+        Debug.Log("redoing move, did it have rook to castle: " + move.Key.rookToCastle);
+        _movesPlayed.Push(move);
+
+        // Pawn pawn = (Pawn)move.Value;
+        // if (pawn.pieceData.color == PieceColor.Black)
+        //     Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn);
+        MakeMove(move.Value, move.Key, false);
+        // if (pawn.pieceData.color == PieceColor.Black)
+        //     Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
     }
 
     void SpecialPieceMoves(Piece piece, Move move)
@@ -231,19 +300,20 @@ public class MoveLogic : MonoBehaviour
         }
         
         // Destroy piece when en-passant
-        GameObject pawnToDestroy = move.enPassantCapture;
+        Pawn pawnToDestroy = (Pawn)move.enPassantCapture;
         if (pawnToDestroy != null)
         {
-            _pieces.Remove(WorldToBoard(pawnToDestroy.transform.position));
+            _pieces.Remove(WorldToBoard(pawnToDestroy.go.transform.position));
             int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
             _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
-            Destroy(move.enPassantCapture);
+            move.enPassantCapture.go.SetActive(false);
         }
         
         if (_heldPawn != null)
         {
+            //Debug.Log(piece.pieceData.type);
             // Remove option to en-passant pawns
-            _heldPawn = (Pawn)_legalGenerator.heldPiece;
+            _heldPawn = (Pawn)piece;
             if (_heldPawn.disableEnPassantNextTurn)
                 _heldPawn.doubleMovedLastTurn = false;
             else _heldPawn.disableEnPassantNextTurn = true;
@@ -321,6 +391,7 @@ public class MoveLogic : MonoBehaviour
 
         Piece newPiece = GetPieceFromGameObject(newGo);
         _pieces.Add(pos, newPiece);
+        _piecesAliveAndDead.Add(pos, newPiece);
         
         if (newPiece.pieceData.color == PieceColor.White)
             _legalGenerator.whiteTargetedSquares.Add(newPiece, new List<Vector2Int>());
@@ -342,7 +413,7 @@ public class MoveLogic : MonoBehaviour
             if (piece.color == PieceColor.White && !_whiteRooksPos.Contains(pos) ||
                 piece.color == PieceColor.Black && !_blackRooksPos.Contains(pos))
             {
-                //Debug.Log($"{piece.color} {piece.type} at {pos} not on starting square, preventing castling");
+                Debug.Log($"{piece.color} {piece.type} at {pos} not on starting square, preventing castling");
                 Rook rook = (Rook)newPiece;
                 rook.hasMoved = true;
             }
@@ -355,7 +426,7 @@ public class MoveLogic : MonoBehaviour
             if (piece.color == PieceColor.White && whiteKingBasePos != pos ||
                 piece.color == PieceColor.Black && blackKingBasePos != pos)
             {
-                //Debug.Log($"{piece.color} {piece.type} at {pos} not on starting square, preventing castling");
+                Debug.Log($"{piece.color} {piece.type} at {pos} not on starting square, preventing castling");
                 King king = (King)newPiece;
                 king.hasMoved = true;
             }
@@ -616,10 +687,11 @@ public struct Move : IEquatable<Move>
     public bool isMoveLegal;
     
     // When taking a piece using en passant
-    public GameObject enPassantCapture; 
+    public Piece enPassantCapture; 
     
     // For castling
     public Rook rookToCastle;
+    public Vector2Int rookStartSquare;
     public Vector2Int rookEndSquare;
 
     public Move(Vector2Int startSquare, Vector2Int endSquare)
@@ -631,6 +703,7 @@ public struct Move : IEquatable<Move>
         isMoveLegal = true;
         enPassantCapture = null;
         rookToCastle = null;
+        rookStartSquare = -Vector2Int.one;
         rookEndSquare = -Vector2Int.one;
     }
 

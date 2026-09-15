@@ -8,7 +8,6 @@ public abstract class Piece
     public GameObject go;
 
     public abstract List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends);
-
+    
+    public abstract Piece DeepCopy(Piece pieceToCopy, Piece pieceToOverwrite = null);
 }
-
-

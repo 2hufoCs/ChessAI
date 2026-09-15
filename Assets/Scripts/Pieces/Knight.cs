@@ -10,7 +10,7 @@ namespace Pieces
             new Vector2(1, 2), new Vector2(2, 1),  new Vector2(2, -1),   new Vector2(1, -2),
             new Vector2(-1, -2), new Vector2(-2, -1), new Vector2(-2, 1),  new Vector2(-1, 2)
         };
-        private MoveLogic _moveLogic;
+        public MoveLogic _moveLogic;
         
         public Knight(PieceData pieceData, GameObject go,  MoveLogic moveLogic)
         {
@@ -18,7 +18,21 @@ namespace Pieces
             this.go = go;
             _moveLogic = moveLogic;
         }
-    
+
+        public override Piece DeepCopy(Piece pieceToCopy, Piece pieceToOverwrite = null)
+        {
+            Knight k1 = (Knight)pieceToCopy;
+            
+            if (pieceToOverwrite == null)
+                return new Knight(k1.pieceData, k1.go, k1._moveLogic);
+            
+            Knight k2 = (Knight)pieceToCopy;
+            k2.pieceData = k1.pieceData;
+            k2.go = k1.go;
+            k2._moveLogic = k1._moveLogic;
+            return k2;
+        }
+
         public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
         {
             List<Move> moves = new();

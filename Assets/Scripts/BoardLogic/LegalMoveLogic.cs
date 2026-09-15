@@ -138,6 +138,7 @@ public class LegalMoveLogic : MonoBehaviour
             // Get legal moves of piece, track targeted squares
             List<Move> moves = new();
             List<Vector2Int> targetPositions = new();
+            //Debug.Log($"{piece.Key}: {piece.Value.pieceData.color} ");
             foreach (Move move in piece.Value.GetPseudolegalMoves(piece.Key, true))
             {
                 if (move.isMoveLegal)

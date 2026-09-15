@@ -7,8 +7,8 @@ namespace Pieces
     {
         public bool isInCheck;
         
-        private Dictionary<Vector2, Rook> _rooks;
-        private MoveLogic _moveLogic;
+        public Dictionary<Vector2, Rook> _rooks;
+        public MoveLogic _moveLogic;
         
         public bool hasMoved;
 
@@ -17,6 +17,31 @@ namespace Pieces
             this.pieceData = pieceData;
             this.go = go;
             _moveLogic = moveLogic;
+        }
+
+        public override Piece DeepCopy(Piece pieceToCopy, Piece pieceToOverwrite = null)
+        {
+            King p1 = (King)pieceToCopy;
+
+            if (pieceToOverwrite == null)
+            {
+                King king = new(p1.pieceData, p1.go, p1._moveLogic)
+                {
+                    hasMoved = p1.hasMoved,
+                    _rooks = p1._rooks,
+                    isInCheck = p1.isInCheck
+                };
+                return king;
+            }
+            
+            King p2 = (King)pieceToOverwrite;
+            p2.go = p1.go;
+            p2.pieceData = p1.pieceData;
+            p2._moveLogic = p1._moveLogic;
+            p2.hasMoved = p1.hasMoved;
+            p2._rooks = p1._rooks;
+            p2.isInCheck = p1.isInCheck;
+            return p2;
         }
 
         public void AssignRooks(Dictionary<Vector2, Rook> rooks)
@@ -60,6 +85,8 @@ namespace Pieces
             {
                 if (rook.Value == null) continue;
                 
+                Debug.Log($"king 1st condition: {!hasMoved}, {!rook.Value.hasMoved}");
+                
                 // Rule n°1: king and rooks didn't move from the beginning
                 if (hasMoved || rook.Value.hasMoved) continue;
                 
@@ -75,6 +102,7 @@ namespace Pieces
                     // Rule n°2: no pieces between king and rook
                     if (_moveLogic.GetSquare(pos) != 0 && i != kingSquarePos.x)
                     {
+                        //Debug.Log("piece between king and rook");
                         stopCastling = true;
                         break;
                     }
@@ -86,6 +114,7 @@ namespace Pieces
                     {
                         if (pieceTargets.Contains(pos))
                         {
+                            Debug.Log("path between king and rook targeted");
                             stopCastling = true;
                             break;
                         }
@@ -107,6 +136,7 @@ namespace Pieces
                     endSquare = newKingPos,
                     isMoveLegal = true,
                     rookToCastle = rook.Value,
+                    rookStartSquare = rookSquarePos,
                     rookEndSquare = newRookPos,
                 });
             }
