@@ -67,7 +67,7 @@ public class PrecomputedMoveData
                 PieceColor targetSquareColor = pieceOnTargetSquare > 8 ? PieceColor.Black : pieceOnTargetSquare != 0 ? PieceColor.White : PieceColor.None;
                 PieceType targetType = pieceOnTargetSquare > 8 ? (PieceType)(pieceOnTargetSquare - 8) : (PieceType)(pieceOnTargetSquare);
 
-                Move move = new(startPos, targetSquare);
+                Move move = new(startPos, targetSquare, piece.DeepCopy(piece, piece));
 
                 if (targetType == PieceType.King && targetSquareColor == enemyColor && pinnedPiecePos != -Vector2Int.one)
                 {

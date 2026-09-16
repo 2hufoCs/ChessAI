@@ -45,7 +45,7 @@ namespace Pieces
                 // Exclude move if outside bounds
                 if (!IsInsideBounds(targetSquarePos)) continue;
                 
-                Move move = new Move(Vector2Int.RoundToInt(initialPos), targetSquarePos);
+                Move move = new Move(Vector2Int.RoundToInt(initialPos), targetSquarePos, DeepCopy(this, this));
                 
                 // Exclude move if square has friendly piece
                 int targetSquare = _moveLogic.GetSquare(targetSquarePos);

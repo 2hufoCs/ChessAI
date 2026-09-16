@@ -146,6 +146,9 @@ public class MoveLogic : MonoBehaviour
 
     public void MakeMove(Piece piece, Move move, bool trackMove = true)
     {
+        Pawn prePawn = (Pawn)move.preMovePieceCopy;
+        Debug.Log("before making move, does this instance has double moved:" + prePawn.doubleMovedLastTurn);
+        
         // Before playing move, promotion check
         if (PromotionCheck(piece, move)) return;
         
@@ -172,7 +175,9 @@ public class MoveLogic : MonoBehaviour
         _pieces.TryAdd(move.endSquare, piece);
         if (trackMove)
         {
-            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece.DeepCopy(piece, piece)));
+            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece.DeepCopy(move.preMovePieceCopy, move.preMovePieceCopy)));
+            Pawn pawn = (Pawn)move.preMovePieceCopy;
+            Debug.Log($"added deep copy of piece to moves played, does this instance has double moved: " + pawn.doubleMovedLastTurn);
             _undoMoves.Clear();
             Piece target = move.pieceOnTargetSquare;
             if (target != null)
@@ -194,6 +199,7 @@ public class MoveLogic : MonoBehaviour
 
     public void UnmakeMove(Piece piece, Move move)
     {
+        
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
         
@@ -238,7 +244,7 @@ public class MoveLogic : MonoBehaviour
         }
         else
         {
-            UnmakeMove(move.rookToCastle, new Move(move.rookStartSquare, move.rookEndSquare));
+            UnmakeMove(move.rookToCastle, new Move(move.rookStartSquare, move.rookEndSquare, piece.DeepCopy(piece, piece)));
             move.rookToCastle.hasMoved = false;
         }
     }
@@ -247,16 +253,22 @@ public class MoveLogic : MonoBehaviour
     {
         if (_movesPlayed.Count == 0) return;
         
-        KeyValuePair<Move, Piece> move = _movesPlayed.Pop();
-        Debug.Log("unmaking move, did it have rook to castle: " + move.Key.rookToCastle);
-        _undoMoves.Push(move);
+        
+        //Debug.Log("unmaking move, did it have rook to castle: " + move.Key.rookToCastle);
+        KeyValuePair<Move, Piece> moveDict = _movesPlayed.Pop();
+        Move move = moveDict.Key;
+        Piece piece = moveDict.Value;
+        
+        // Important: overwrite current piece with previous copy
+        piece = move.preMovePieceCopy;
+        _undoMoves.Push(new KeyValuePair<Move, Piece>(move, piece));
 
-        // Pawn pawn = (Pawn)move.Value;
-        // if (pawn.pieceData.color == PieceColor.Black)
-        //     Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn);
-        UnmakeMove(move.Value, move.Key);
-        // if (pawn.pieceData.color == PieceColor.Black)
-        //     Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
+        Pawn pawn = (Pawn)piece;
+        if (pawn.pieceData.color == PieceColor.Black)
+            Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn + ", ");
+        UnmakeMove(piece, move);
+        if (pawn.pieceData.color == PieceColor.Black)
+            Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
     }
 
     
@@ -268,12 +280,12 @@ public class MoveLogic : MonoBehaviour
         Debug.Log("redoing move, did it have rook to castle: " + move.Key.rookToCastle);
         _movesPlayed.Push(move);
 
-        // Pawn pawn = (Pawn)move.Value;
-        // if (pawn.pieceData.color == PieceColor.Black)
-        //     Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn);
+        Pawn pawn = (Pawn)move.Value;
+        if (pawn.pieceData.color == PieceColor.Black)
+            Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn);
         MakeMove(move.Value, move.Key, false);
-        // if (pawn.pieceData.color == PieceColor.Black)
-        //     Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
+        if (pawn.pieceData.color == PieceColor.Black)
+            Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
     }
 
     void SpecialPieceMoves(Piece piece, Move move)
@@ -282,7 +294,7 @@ public class MoveLogic : MonoBehaviour
         if (move.rookToCastle != null)
         {
             Vector2Int startPos = Vector2Int.FloorToInt(WorldToBoard(move.rookToCastle.go.transform.position));
-            Move rookMove = new Move(startPos, move.rookEndSquare);
+            Move rookMove = new Move(startPos, move.rookEndSquare, move.rookToCastle.DeepCopy(move.rookToCastle, move.rookToCastle));
             MakeMove(move.rookToCastle, rookMove);
         }
         
@@ -682,6 +694,7 @@ public struct Move : IEquatable<Move>
 {
     public Vector2Int startSquare;
     public Vector2Int endSquare;
+    public Piece preMovePieceCopy;
     public Piece pieceOnTargetSquare;
 
     public bool isMoveLegal;
@@ -694,10 +707,11 @@ public struct Move : IEquatable<Move>
     public Vector2Int rookStartSquare;
     public Vector2Int rookEndSquare;
 
-    public Move(Vector2Int startSquare, Vector2Int endSquare)
+    public Move(Vector2Int startSquare, Vector2Int endSquare, Piece preMovePieceCopy)
     {
         this.startSquare = startSquare;
         this.endSquare = endSquare;
+        this.preMovePieceCopy = preMovePieceCopy;
         pieceOnTargetSquare = null;
 
         isMoveLegal = true;

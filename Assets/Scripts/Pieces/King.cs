@@ -60,9 +60,7 @@ namespace Pieces
                 // Exclude move if outside bounds
                 if (!IsInsideBounds(targetSquarePos)) continue;
 
-
-
-                Move move = new Move(snappedWholePos, targetSquarePos);
+                Move move = new Move(snappedWholePos, targetSquarePos, DeepCopy(this, this));
                 
                 // Move not legal if square is a friendly piece
                 int targetSquare = _moveLogic.GetSquare(targetSquarePos);
@@ -85,7 +83,7 @@ namespace Pieces
             {
                 if (rook.Value == null) continue;
                 
-                Debug.Log($"king 1st condition: {!hasMoved}, {!rook.Value.hasMoved}");
+                //Debug.Log($"king 1st condition: {!hasMoved}, {!rook.Value.hasMoved}");
                 
                 // Rule n°1: king and rooks didn't move from the beginning
                 if (hasMoved || rook.Value.hasMoved) continue;

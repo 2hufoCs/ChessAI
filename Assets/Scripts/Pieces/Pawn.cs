@@ -106,7 +106,9 @@ namespace Pieces
             
             // Exclude move if square has friendly piece
             int targetSquare = _moveLogic.GetSquare(targetSquarePos);
-            Move move = new Move(Vector2Int.RoundToInt(startPos), targetSquarePos);
+            Move move = new Move(Vector2Int.RoundToInt(startPos), targetSquarePos, DeepCopy(this, this));
+            
+            Pawn prePawn = (Pawn)move.preMovePieceCopy;
             if (!haveToTake)
             {
                 if (targetSquare != 0)
