@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 public class Minmax : MonoBehaviour
@@ -9,7 +10,7 @@ public class Minmax : MonoBehaviour
     [SerializeField] private LegalMoveLogic _legalGenerator;
     [SerializeField] private MoveLogic _moveLogic;
 
-    int GetMoveCount(int depth)
+    public int GetMoveCount(int depth)
     {
         if (depth == 0) 
             return 1;
@@ -22,9 +23,9 @@ public class Minmax : MonoBehaviour
         {
             foreach (Move move in pieceMoves.Value)
             {
-                _moveLogic.MakeMove(pieceMoves.Key, move);
+                _moveLogic.MakeMove(pieceMoves.Key, move, false);
                 numPositions += GetMoveCount(depth - 1);
-                _moveLogic.UnmakeMove(pieceMoves.Key, move);
+                _moveLogic.UnmakeMove(pieceMoves.Key, move, false);
             }
         }
 

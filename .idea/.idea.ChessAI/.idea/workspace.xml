@@ -20,6 +20,7 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/Assets/Scripts/AI/AIDebugWindow.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/AI/Minmax.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/BoardLogic/ActionsBus.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/BoardLogic/BoardSettings.cs" root0="FORCE_HIGHLIGHTING" />
@@ -30,7 +31,6 @@
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/Pieces/Pawn.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/Pieces/Queen.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Assets/Scripts/Pieces/Rook.cs" root0="FORCE_HIGHLIGHTING" />
-    <setting file="mock://C:/Users/c.clement/Desktop/UnityProjects/ChessAI/Assets/Scripts/BoardLogic/MoveLogic.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="McpProjectServerCommands">
     <commands />
@@ -203,6 +203,19 @@
           <properties exception="System.Threading.ThreadAbortException" breakIfHandledByOtherCode="false" displayValue="System.Threading.ThreadAbortException" />
           <option name="timeStamp" value="3" />
         </breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/Assets/Scripts/BoardLogic/MoveLogic.cs</url>
+          <line>165</line>
+          <properties documentPath="C:\Users\c.clement\Desktop\UnityProjects\ChessAI\Assets\Scripts\BoardLogic\MoveLogic.cs" containingFunctionPresentation="Method 'MakeMove'">
+            <startOffsets>
+              <option value="6184" />
+            </startOffsets>
+            <endOffsets>
+              <option value="6211" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>

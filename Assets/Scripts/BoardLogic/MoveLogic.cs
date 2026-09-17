@@ -146,10 +146,7 @@ public class MoveLogic : MonoBehaviour
 
     public void MakeMove(Piece piece, Move move, bool trackMove = true)
     {
-        Piece prePiece = piece.DeepCopy(move.preMovePieceCopy, move.preMovePieceCopy);
-        Pawn prePawn = (Pawn)prePiece;
-        Debug.Log("before making move, does this instance has double moved:" + prePawn.doubleMovedLastTurn);
-        Debug.Log("is deep copy and original same instance: " + piece.Equals(prePiece));
+        Piece prePiece = piece.DeepCopy(move.preMovePieceCopy);
         
         // Before playing move, promotion check
         if (PromotionCheck(piece, move)) return;
@@ -166,6 +163,7 @@ public class MoveLogic : MonoBehaviour
         {
             if (pieceToDestroy != piece)
             {
+                Debug.Log("killing piece");
                 move.pieceOnTargetSquare = pieceToDestroy;
                 _pieces[move.endSquare].go.SetActive(false);
                 _pieces.Remove(move.endSquare);
@@ -177,31 +175,34 @@ public class MoveLogic : MonoBehaviour
         _pieces.TryAdd(move.endSquare, piece);
         if (trackMove)
         {
-            move.preMovePieceCopy = prePawn;
-            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece));
-            Debug.Log($"added deep copy of piece to moves played, does pre-move copy has double moved: " + prePawn.doubleMovedLastTurn);
-            _undoMoves.Clear();
+            move.preMovePieceCopy = prePiece;
+            
             Piece target = move.pieceOnTargetSquare;
             if (target != null)
-                move.pieceOnTargetSquare = target.DeepCopy(target, target);
+                move.pieceOnTargetSquare = target.DeepCopy(target);
             Piece otherTarget = move.enPassantCapture;
             if (otherTarget != null)
-                move.enPassantCapture = otherTarget.DeepCopy(otherTarget, otherTarget);
+            {
+                move.enPassantCapture = otherTarget.DeepCopy(otherTarget);
+                Pawn pawn = (Pawn)move.enPassantCapture;
+                Debug.Log($"playing en passant, capture stats: {pawn.disableEnPassantNextTurn}, {pawn.doubleMovedLastTurn}");
+            }
+            
+            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece));
+            _undoMoves.Clear();
         }
         
         piece.go.transform.position = BoardToWorld(move.endSquare);
         if (move.rookToCastle == null)
         {
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
-            ActionsBus.OnPlayerMoved();
+            if (trackMove)
+                ActionsBus.OnPlayerMoved();
         }
-        //Debug.Log("at the end of making move, does it still have rook to castle: " + move.rookToCastle);
-        //else MakeMove(move.rookToCastle, new Move(move.rookStartSquare, move.rookEndSquare));
     }
 
-    public void UnmakeMove(Piece piece, Move move)
+    public void UnmakeMove(Piece piece, Move move, bool trackMove = true)
     {
-        
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
         
@@ -222,31 +223,36 @@ public class MoveLogic : MonoBehaviour
         if (targetValue > 0)
         {
             if (enPassant)
+            {
                 move.enPassantCapture.go.SetActive(true);
+                _pieces.Add(WorldToBoard(move.enPassantCapture.go.transform.position), move.enPassantCapture);
+                int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
+                _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
+            }
             else
             {
                 move.pieceOnTargetSquare.go.SetActive(true);
                 _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
             }
+            Debug.Log("reviving piece");
         }
+        
+        SpecialPieceUnmake(piece, move, trackMove);
+    }
 
-        // debug
-        if (enPassant)
-        {
-            Pawn pawn = (Pawn)move.enPassantCapture;
-            Debug.Log($"en passant capture; double moved last turn: {pawn.doubleMovedLastTurn}, disable en passant next turn:{pawn.disableEnPassantNextTurn}");
-        }
-        
-        
+    void SpecialPieceUnmake(Piece piece, Move move, bool trackMove = true)
+    {
         // Also undo special piece checks
         if (move.rookToCastle == null)
         {
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
-            ActionsBus.OnPlayerMoved();
+            if (trackMove)
+                ActionsBus.OnPlayerMoved();
         }
         else
         {
-            UnmakeMove(move.rookToCastle, new Move(move.rookStartSquare, move.rookEndSquare, piece.DeepCopy(piece, piece)));
+            Rook rookToUncastle = (Rook)move.rookToCastle.DeepCopy(move.rookToCastle);
+            UnmakeMove(rookToUncastle, new Move(move.rookStartSquare, move.rookEndSquare, piece.DeepCopy(piece)));
             move.rookToCastle.hasMoved = false;
         }
     }
@@ -259,19 +265,10 @@ public class MoveLogic : MonoBehaviour
         KeyValuePair<Move, Piece> moveDict = _movesPlayed.Pop();
         Move move = moveDict.Key;
         Piece piece = moveDict.Value;
-        
-        // Important: overwrite current piece with previous copy
-        piece = move.preMovePieceCopy;
-        Pawn p = (Pawn)move.preMovePieceCopy;
-        Debug.Log($"replaced pawn with pre-move copy: {p.doubleMovedLastTurn}");
+
         _undoMoves.Push(new KeyValuePair<Move, Piece>(move, piece));
 
-        Pawn pawn = (Pawn)piece;
-        if (pawn.pieceData.color == PieceColor.Black)
-            Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn + ", ");
-        UnmakeMove(piece, move);
-        if (pawn.pieceData.color == PieceColor.Black)
-            Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
+        UnmakeMove(piece, move, false);
     }
 
     
@@ -280,15 +277,10 @@ public class MoveLogic : MonoBehaviour
         if (_undoMoves.Count == 0) return;
         
         KeyValuePair<Move, Piece> move = _undoMoves.Pop();
-        Debug.Log("redoing move, did it have rook to castle: " + move.Key.rookToCastle);
-        _movesPlayed.Push(move);
 
-        Pawn pawn = (Pawn)move.Value;
-        if (pawn.pieceData.color == PieceColor.Black)
-            Debug.Log("before unmake move: " + pawn.doubleMovedLastTurn);
+        _movesPlayed.Push(move);
+        
         MakeMove(move.Value, move.Key, false);
-        if (pawn.pieceData.color == PieceColor.Black)
-            Debug.Log("after unmake move: " + pawn.doubleMovedLastTurn);
     }
 
     void SpecialPieceMoves(Piece piece, Move move)
@@ -297,7 +289,7 @@ public class MoveLogic : MonoBehaviour
         if (move.rookToCastle != null)
         {
             Vector2Int startPos = Vector2Int.FloorToInt(WorldToBoard(move.rookToCastle.go.transform.position));
-            Move rookMove = new Move(startPos, move.rookEndSquare, move.rookToCastle.DeepCopy(move.rookToCastle, move.rookToCastle));
+            Move rookMove = new Move(startPos, move.rookEndSquare, move.rookToCastle.DeepCopy(move.rookToCastle));
             MakeMove(move.rookToCastle, rookMove);
         }
         
@@ -315,9 +307,10 @@ public class MoveLogic : MonoBehaviour
         }
         
         // Destroy piece when en-passant
-        Pawn pawnToDestroy = (Pawn)move.enPassantCapture;
-        if (pawnToDestroy != null)
+        if (move.enPassantCapture != null)
         {
+            Pawn pawnToDestroy = (Pawn)move.enPassantCapture; // Removed deep copy
+            Debug.Log("doing en passant");
             _pieces.Remove(WorldToBoard(pawnToDestroy.go.transform.position));
             int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
             _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
@@ -700,15 +693,19 @@ public struct Move : IEquatable<Move>
     public Vector2Int startSquare;
     public Vector2Int endSquare;
     public Piece preMovePieceCopy;
+    
     public Piece pieceOnTargetSquare;
+    public Piece preMoveTargetPiece;
 
     public bool isMoveLegal;
     
     // Pawns-specific stuff
-    public Piece enPassantCapture; 
+    public Piece enPassantCapture;
+    public Piece preMoveEnPassantCapture;
     
     // For castling
     public Rook rookToCastle;
+    public Rook preMoveRookCastle;
     public Vector2Int rookStartSquare;
     public Vector2Int rookEndSquare;
 
@@ -718,6 +715,10 @@ public struct Move : IEquatable<Move>
         this.endSquare = endSquare;
         this.preMovePieceCopy = preMovePieceCopy;
         pieceOnTargetSquare = null;
+        
+        preMoveTargetPiece = null;
+        preMoveEnPassantCapture = null;
+        preMoveRookCastle = null;
 
         isMoveLegal = true;
         enPassantCapture = null;

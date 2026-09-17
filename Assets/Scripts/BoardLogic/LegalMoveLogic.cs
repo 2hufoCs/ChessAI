@@ -138,12 +138,8 @@ public class LegalMoveLogic : MonoBehaviour
             // Get legal moves of piece, track targeted squares
             List<Move> moves = new();
             List<Vector2Int> targetPositions = new();
-            Piece preMoveCopy = piece.Value.DeepCopy(piece.Value, piece.Value);
-            if (piece.Value.GetType() == typeof(Pawn))
-            {
-                Pawn pawn = (Pawn)piece.Value;
-                Debug.Log("in legal move logic, has pawn double moved: " + pawn.doubleMovedLastTurn);
-            }
+            Piece preMoveCopy = piece.Value.DeepCopy(piece.Value);
+
             foreach (Move pseudoMove in piece.Value.GetPseudolegalMoves(piece.Key, true))
             {
                 // Make copy of piece before anything was computed
@@ -155,8 +151,11 @@ public class LegalMoveLogic : MonoBehaviour
                 targetPositions.Add(move.endSquare);
             }
             
+            
+            
             if (piece.Value.pieceData.color == PieceColor.White)
             {
+                //Debug.Log("calculating targeted squares for piece at pos" + piece.Key);
                 whiteTargetedSquares.Add(piece.Value, targetPositions);
                 whitePseudolegalMoves.Add(piece.Value, moves);
             }

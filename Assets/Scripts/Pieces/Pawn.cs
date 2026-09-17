@@ -55,7 +55,7 @@ namespace Pieces
             
             // Double forward (if pawn hasn't moved yet)
             int startingRank = pieceData.color == PieceColor.White ? 1 : 6;
-            if (snappedPos.y == startingRank)
+            if (snappedPos.y == startingRank && moves.Count > 0)
             {
                 Vector2Int doubleForwardSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir * 2);
                 CheckSingleMove(doubleForwardSquarePos, ref moves, initialPos, false);
@@ -81,7 +81,9 @@ namespace Pieces
             {
                 if (leftPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = leftPawn};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), 
+                        isMoveLegal = true, enPassantCapture = leftPawn.DeepCopy(leftPawn)};
+                    newMove.preMoveEnPassantCapture = leftPawn.DeepCopy(leftPawn);
                     //Debug.Log("can make en passant, go to kill would be " + newMove.enPassantCapture);
                     moves.Add(newMove);
                 }
@@ -92,7 +94,8 @@ namespace Pieces
             {
                 if (rightPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = rightPawn};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = rightPawn.DeepCopy(rightPawn)};
+                    newMove.preMoveEnPassantCapture = rightPawn.DeepCopy(rightPawn);
                     moves.Add(newMove);
                 }
             }
