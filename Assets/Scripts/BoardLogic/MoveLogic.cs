@@ -146,8 +146,10 @@ public class MoveLogic : MonoBehaviour
 
     public void MakeMove(Piece piece, Move move, bool trackMove = true)
     {
-        Pawn prePawn = (Pawn)move.preMovePieceCopy;
+        Piece prePiece = piece.DeepCopy(move.preMovePieceCopy, move.preMovePieceCopy);
+        Pawn prePawn = (Pawn)prePiece;
         Debug.Log("before making move, does this instance has double moved:" + prePawn.doubleMovedLastTurn);
+        Debug.Log("is deep copy and original same instance: " + piece.Equals(prePiece));
         
         // Before playing move, promotion check
         if (PromotionCheck(piece, move)) return;
@@ -175,9 +177,9 @@ public class MoveLogic : MonoBehaviour
         _pieces.TryAdd(move.endSquare, piece);
         if (trackMove)
         {
-            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece.DeepCopy(move.preMovePieceCopy, move.preMovePieceCopy)));
-            Pawn pawn = (Pawn)move.preMovePieceCopy;
-            Debug.Log($"added deep copy of piece to moves played, does this instance has double moved: " + pawn.doubleMovedLastTurn);
+            move.preMovePieceCopy = prePawn;
+            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece));
+            Debug.Log($"added deep copy of piece to moves played, does pre-move copy has double moved: " + prePawn.doubleMovedLastTurn);
             _undoMoves.Clear();
             Piece target = move.pieceOnTargetSquare;
             if (target != null)
@@ -253,7 +255,6 @@ public class MoveLogic : MonoBehaviour
     {
         if (_movesPlayed.Count == 0) return;
         
-        
         //Debug.Log("unmaking move, did it have rook to castle: " + move.Key.rookToCastle);
         KeyValuePair<Move, Piece> moveDict = _movesPlayed.Pop();
         Move move = moveDict.Key;
@@ -261,6 +262,8 @@ public class MoveLogic : MonoBehaviour
         
         // Important: overwrite current piece with previous copy
         piece = move.preMovePieceCopy;
+        Pawn p = (Pawn)move.preMovePieceCopy;
+        Debug.Log($"replaced pawn with pre-move copy: {p.doubleMovedLastTurn}");
         _undoMoves.Push(new KeyValuePair<Move, Piece>(move, piece));
 
         Pawn pawn = (Pawn)piece;
@@ -326,7 +329,9 @@ public class MoveLogic : MonoBehaviour
             //Debug.Log(piece.pieceData.type);
             // Remove option to en-passant pawns
             _heldPawn = (Pawn)piece;
-            if (_heldPawn.disableEnPassantNextTurn)
+            if (Mathf.Abs(move.startSquare.y - move.endSquare.y) == 2)
+                _heldPawn.doubleMovedLastTurn = true;
+            else if (_heldPawn.disableEnPassantNextTurn)
                 _heldPawn.doubleMovedLastTurn = false;
             else _heldPawn.disableEnPassantNextTurn = true;
         }
@@ -699,7 +704,7 @@ public struct Move : IEquatable<Move>
 
     public bool isMoveLegal;
     
-    // When taking a piece using en passant
+    // Pawns-specific stuff
     public Piece enPassantCapture; 
     
     // For castling

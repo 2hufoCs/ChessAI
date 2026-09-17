@@ -58,8 +58,8 @@ namespace Pieces
             if (snappedPos.y == startingRank)
             {
                 Vector2Int doubleForwardSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir * 2);
-                if (CheckSingleMove(doubleForwardSquarePos, ref moves, initialPos, false))
-                    doubleMovedLastTurn = true;
+                CheckSingleMove(doubleForwardSquarePos, ref moves, initialPos, false);
+                //doubleMovedLastTurn = true;
             }
             
             // Up-left and right-left (if there's an enemy piece)
@@ -136,6 +136,16 @@ namespace Pieces
             if (square is (int)PieceType.Pawn + (int)PieceColor.White or (int)PieceType.Pawn + (int)PieceColor.Black)
                 return (Pawn)_pieces[pos];
             return null;
+        }
+
+        public static bool IsStartingSquare(Pawn pawn, Vector2Int pos)
+        {
+            return (pawn.pieceData.color == PieceColor.White && BoardSettings.Instance.boardFlipped
+                       ? pos.y == 6
+                       : pos.y == 1) ||
+                   (pawn.pieceData.color == PieceColor.Black && BoardSettings.Instance.boardFlipped
+                       ? pos.y == 1
+                       : pos.y == 6);
         }
         
         bool IsInsideBounds(Vector2 pos)
