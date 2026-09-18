@@ -22,12 +22,10 @@ public class AIDebugWindow : MonoBehaviour
         
         for (int i = 1; i <= moveCalculationDepth; i++)
         {
-            // Get move count
-            StartCoroutine(minmax.GetOptimizedMoveCount(i));
-            yield return new WaitForSeconds(0.5f); // wait until coroutine is finished
+            DateTime initialTime = DateTime.Now;
+            yield return StartCoroutine(minmax.GetOptimizedMoveCount(i)); // wait until moves have been calculated
             
             // Use timer to calculate minmax duration taken
-            DateTime initialTime = DateTime.Now;
             int numPositions = minmax.totalPositions;
             TimeSpan diff = DateTime.Now - initialTime;
             float timeDiff = diff.Seconds * 1000 + diff.Milliseconds;
