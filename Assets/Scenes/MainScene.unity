@@ -1265,6 +1265,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Minmax
   _maxDepth: 4
+  totalPositions: 0
   _legalGenerator: {fileID: 513466251}
   _moveLogic: {fileID: 513466249}
 --- !u!4 &895257647
@@ -1842,7 +1843,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AIDebugWindow
   minmax: {fileID: 895257646}
-  moveCalculationDepth: 3
+  moveCalculationDepth: 4
   textPrefab: {fileID: 2071300478066986613, guid: 045cd1585ff5f1346b4d6ea6a1cb6d40, type: 3}
   textListParent: {fileID: 2079899933}
 --- !u!1 &2123154641

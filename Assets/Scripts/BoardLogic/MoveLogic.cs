@@ -144,12 +144,12 @@ public class MoveLogic : MonoBehaviour
         _legalGenerator.heldPiece = null;
     }
 
-    public void MakeMove(Piece piece, Move move, bool trackMove = true)
+    public Move MakeMove(Piece piece, Move move, bool trackMove = true)
     {
-        Piece prePiece = piece.DeepCopy(move.preMovePieceCopy);
+        //Piece prePiece = piece.DeepCopy(move.preMovePieceCopy);
         
         // Before playing move, promotion check
-        if (PromotionCheck(piece, move)) return;
+        if (PromotionCheck(piece, move)) return move;
         
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
@@ -163,9 +163,8 @@ public class MoveLogic : MonoBehaviour
         {
             if (pieceToDestroy != piece)
             {
-                Debug.Log("killing piece");
                 move.pieceOnTargetSquare = pieceToDestroy;
-                _pieces[move.endSquare].go.SetActive(false);
+                //_pieces[move.endSquare].go.SetActive(false);
                 _pieces.Remove(move.endSquare);
             }
         }
@@ -175,21 +174,8 @@ public class MoveLogic : MonoBehaviour
         _pieces.TryAdd(move.endSquare, piece);
         if (trackMove)
         {
-            move.preMovePieceCopy = prePiece;
-            
-            Piece target = move.pieceOnTargetSquare;
-            if (target != null)
-                move.pieceOnTargetSquare = target.DeepCopy(target);
-            Piece otherTarget = move.enPassantCapture;
-            if (otherTarget != null)
-            {
-                move.enPassantCapture = otherTarget.DeepCopy(otherTarget);
-                Pawn pawn = (Pawn)move.enPassantCapture;
-                Debug.Log($"playing en passant, capture stats: {pawn.disableEnPassantNextTurn}, {pawn.doubleMovedLastTurn}");
-            }
-            
-            _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece));
-            _undoMoves.Clear();
+            //move.preMovePieceCopy = prePiece;
+            TrackPlayedMove(piece, move);
         }
         
         piece.go.transform.position = BoardToWorld(move.endSquare);
@@ -199,49 +185,98 @@ public class MoveLogic : MonoBehaviour
             if (trackMove)
                 ActionsBus.OnPlayerMoved();
         }
+
+        return move;
+    }
+
+    void TrackPlayedMove(Piece piece, Move move)
+    {
+        Piece target = move.pieceOnTargetSquare;
+        if (target != null)
+            move.pieceOnTargetSquare = target.DeepCopy(target);
+        Piece otherTarget = move.enPassantCapture;
+        if (otherTarget != null)
+        {
+            move.enPassantCapture = otherTarget.DeepCopy(otherTarget);
+            Pawn pawn = (Pawn)move.enPassantCapture;
+            Debug.Log($"playing en passant, capture stats: {pawn.disableEnPassantNextTurn}, {pawn.doubleMovedLastTurn}");
+        }
+            
+        _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece));
+        _undoMoves.Clear();
     }
 
     public void UnmakeMove(Piece piece, Move move, bool trackMove = true)
     {
+        // Get necessary data
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
         
+        // Calculate piece target value (either normal capture or en passant)
         bool enPassant = move.enPassantCapture != null;
         int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
             move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
         
-        // Update board matrix
+        // Update board matrix and pieces dict
         _board[move.startSquare.y, move.startSquare.x] = value;
         _board[move.endSquare.y, move.endSquare.x] = targetValue;
         
         _pieces.Remove(move.endSquare);
         _pieces.TryAdd(move.startSquare, piece);
         piece.go.transform.position = BoardToWorld(move.startSquare);
-        //Debug.Log($"start: {move.startSquare} end: {move.endSquare}");
         
         // Revive piece at end square
-        if (targetValue > 0)
+        if (targetValue > 0 && !enPassant)
         {
-            if (enPassant)
-            {
-                move.enPassantCapture.go.SetActive(true);
-                _pieces.Add(WorldToBoard(move.enPassantCapture.go.transform.position), move.enPassantCapture);
-                int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
-                _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
-            }
-            else
-            {
-                move.pieceOnTargetSquare.go.SetActive(true);
-                _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
-            }
-            Debug.Log("reviving piece");
+            //move.pieceOnTargetSquare.go.SetActive(true);
+            _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
         }
         
         SpecialPieceUnmake(piece, move, trackMove);
     }
 
+    public void HideVisualsBeforeMinmax()
+    {
+        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        {
+            piece.Value.go.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Actually computes visuals once all abstract calculations have been made, such as: enabled/disabled pieces
+    /// </summary>
+    public void ShowVisualsAfterMinmax()
+    {
+        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        {
+            piece.Value.go.SetActive(true);
+        }
+    }
+
     void SpecialPieceUnmake(Piece piece, Move move, bool trackMove = true)
     {
+        
+        bool enPassant = move.enPassantCapture != null;
+        int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
+            move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
+
+        // Revive en passant
+        if (enPassant && targetValue > 0)
+        {
+            move.enPassantCapture.go.SetActive(true);
+            Vector2Int capturedPos = Vector2Int.RoundToInt(WorldToBoard(move.enPassantCapture.go.transform.position));
+            _pieces.Add(capturedPos, move.enPassantCapture);
+                
+            // Manually modify board matrix cuz it's not updated correctly (piece dict is fine tho)
+            int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
+            _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
+            _board[capturedPos.y +  pawnOffset * -1, capturedPos.x] = 0;
+            _board[capturedPos.y, capturedPos.x] = targetValue;
+                
+            Debug.Log($"en passant capturer is now at {move.startSquare}, capture is at {WorldToBoard(move.enPassantCapture.go.transform.position)}, reset at pos {capturedPos.y +  pawnOffset}, {capturedPos.x}");
+        }
+        
         // Also undo special piece checks
         if (move.rookToCastle == null)
         {
@@ -251,6 +286,7 @@ public class MoveLogic : MonoBehaviour
         }
         else
         {
+            // Uncastle rook along with king that just uncastled
             Rook rookToUncastle = (Rook)move.rookToCastle.DeepCopy(move.rookToCastle);
             UnmakeMove(rookToUncastle, new Move(move.rookStartSquare, move.rookEndSquare, piece.DeepCopy(piece)));
             move.rookToCastle.hasMoved = false;
