@@ -6,6 +6,7 @@ public abstract class Piece
 {
     public PieceData pieceData;
     public GameObject go;
+    public bool isDefended;
 
     public abstract List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends);
     

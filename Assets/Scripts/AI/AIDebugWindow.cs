@@ -37,4 +37,9 @@ public class AIDebugWindow : MonoBehaviour
             newText.GetComponentInChildren<TextMeshProUGUI>().enabled = true;
         }
     }
+
+    public void CalculateNumPositions()
+    {
+        StartCoroutine(DebugMoveCount());
+    }
 }

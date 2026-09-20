@@ -38,61 +38,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="6.023644272638566E-224" />
-      <entry key="S2" value="2.3494245378418287E-56" />
-      <entry key="S5" value="1.3830108934629065E-22" />
-      <entry key="S10" value="3.583198118590173E-11" />
-      <entry key="S30" value="0.0018042133994358668" />
-      <entry key="S60" value="0.1978380650967673" />
-      <entry key="M2" value="3.1320493067651642" />
-      <entry key="M5" value="27.23673951039877" />
-      <entry key="M10" value="72.2658921425094" />
-      <entry key="M15" value="107.7779091555777" />
-      <entry key="M30" value="178.11109917018553" />
-      <entry key="H1" value="248.87204690914297" />
-      <entry key="H2" value="304.8196257686083" />
-      <entry key="H4" value="342.95066878331886" />
-      <entry key="D1" value="653.5761949843452" />
-      <entry key="W1" value="2693.068762424157" />
+      <entry key="MS100" value="2.0517971733563245" />
+      <entry key="MS500" value="3.4922189185758508" />
+      <entry key="S2" value="8.33608426282751" />
+      <entry key="S5" value="14.9733290702626" />
+      <entry key="S10" value="19.83909775165565" />
+      <entry key="S30" value="25.05768635060686" />
+      <entry key="S60" value="27.088552440186206" />
+      <entry key="M2" value="28.833426558175155" />
+      <entry key="M5" value="36.17990813486974" />
+      <entry key="M10" value="55.49764651370805" />
+      <entry key="M15" value="78.22808932259612" />
+      <entry key="M30" value="145.6724454396448" />
+      <entry key="H1" value="238.54813146691893" />
+      <entry key="H2" value="324.6750555730571" />
+      <entry key="H4" value="390.68107657998763" />
+      <entry key="D1" value="816.8635793357386" />
+      <entry key="W1" value="3053.329529745404" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.000000022121125" />
-      <entry key="MS500" value="1.0294416023095252" />
-      <entry key="S2" value="1.4142288665784457" />
-      <entry key="S5" value="1.702904209517273" />
-      <entry key="S10" value="1.8383938272192244" />
-      <entry key="S30" value="1.9431424953517697" />
-      <entry key="S60" value="1.997386089613347" />
-      <entry key="M2" value="2.334968116586297" />
-      <entry key="M5" value="4.464049863766647" />
-      <entry key="M10" value="8.237987561295487" />
-      <entry key="M15" value="11.42389546047081" />
-      <entry key="M30" value="18.718984370818614" />
-      <entry key="H1" value="27.16139863193121" />
-      <entry key="H2" value="34.31805415281784" />
-      <entry key="H4" value="39.587078962511285" />
-      <entry key="D1" value="109.90191930275566" />
-      <entry key="W1" value="506.87567692348745" />
+      <entry key="MS100" value="1.3940076068953527E-250" />
+      <entry key="MS500" value="1.4378319860122644E-50" />
+      <entry key="S2" value="5.681106002689927E-13" />
+      <entry key="S5" value="1.9119734180225046E-5" />
+      <entry key="S10" value="0.006181641376160716" />
+      <entry key="S30" value="0.291321281749047" />
+      <entry key="S60" value="0.7685120815533186" />
+      <entry key="M2" value="1.3980554120517208" />
+      <entry key="M5" value="4.286098480379996" />
+      <entry key="M10" value="12.26347402989884" />
+      <entry key="M15" value="21.574935695976343" />
+      <entry key="M30" value="47.00723885622903" />
+      <entry key="H1" value="78.23388311144761" />
+      <entry key="H2" value="104.95310123000026" />
+      <entry key="H4" value="123.51544585377255" />
+      <entry key="D1" value="190.46200212862956" />
+      <entry key="W1" value="600.629897553838" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="4.256420154022527E-5" />
-      <entry key="MS500" value="0.1384702848165131" />
-      <entry key="S2" value="0.8687407802911" />
-      <entry key="S5" value="1.404824903138513" />
-      <entry key="S10" value="1.6705108780675635" />
-      <entry key="S30" value="1.8840564562569027" />
-      <entry key="S60" value="2.161968253334562" />
-      <entry key="M2" value="5.436892137668287" />
-      <entry key="M5" value="31.655091185372427" />
-      <entry key="M10" value="80.45278440101043" />
-      <entry key="M15" value="119.15200451260216" />
-      <entry key="M30" value="196.78737589680304" />
-      <entry key="H1" value="276.0020020660097" />
-      <entry key="H2" value="339.11774928555536" />
-      <entry key="H4" value="382.5262807225102" />
-      <entry key="D1" value="763.4735912538993" />
-      <entry key="W1" value="3199.9414328658104" />
+      <entry key="MS100" value="1.7192610633113807" />
+      <entry key="MS500" value="3.3836852965346753" />
+      <entry key="S2" value="8.25325651686772" />
+      <entry key="S5" value="14.88607109533678" />
+      <entry key="S10" value="19.771194375768367" />
+      <entry key="S30" value="25.306335351174315" />
+      <entry key="S60" value="27.82902824921393" />
+      <entry key="M2" value="30.21154426807785" />
+      <entry key="M5" value="40.43412790005785" />
+      <entry key="M10" value="67.70444066227553" />
+      <entry key="M15" value="99.73387648039665" />
+      <entry key="M30" value="192.60380522639852" />
+      <entry key="H1" value="316.7188726360104" />
+      <entry key="H2" value="429.5856546952335" />
+      <entry key="H4" value="514.1714151558558" />
+      <entry key="D1" value="1007.3188307708866" />
+      <entry key="W1" value="3653.956041719249" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -129,6 +129,16 @@
   }
 }]]></component>
   <component name="RunManager" selected="Attach to Unity Editor.Attach to Unity Editor">
+    <configuration name="Standalone Player" type="RunUnityExe" factoryName="Unity Executable">
+      <option name="EXE_PATH" value="$PROJECT_DIR$/../../BuiltGames\ChessAI.exe" />
+      <option name="PROGRAM_PARAMETERS" value="" />
+      <option name="WORKING_DIRECTORY" value="C:\Users\foCsc\Desktop\Programming\Unity\BuiltGames" />
+      <option name="PASS_PARENT_ENVS" value="1" />
+      <option name="ENV_FILE_PATHS" value="" />
+      <option name="REDIRECT_INPUT_PATH" value="" />
+      <option name="MIXED_MODE_DEBUG" value="0" />
+      <method v="2" />
+    </configuration>
     <configuration name="Start Unity" type="RunUnityExe" factoryName="Unity Executable">
       <option name="EXE_PATH" value="C:\Program Files\Unity\Hub\Editor\6000.3.23f1\Editor\Unity.exe" />
       <option name="PROGRAM_PARAMETERS" value="-projectPath C:\Users\c.clement\Desktop\UnityProjects\ChessAI -debugCodeOptimization" />

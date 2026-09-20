@@ -5,9 +5,9 @@ namespace Pieces
 {
     public class Bishop : Piece
     {
-        Dictionary<Vector2, Piece> _pieces;
+        Dictionary<Vector2Int, Piece> _pieces;
         
-        public Bishop(PieceData pieceData, GameObject go, Dictionary<Vector2, Piece> pieces)
+        public Bishop(PieceData pieceData, GameObject go, Dictionary<Vector2Int, Piece> pieces)
         {
             this.pieceData = pieceData;
             this.go = go;

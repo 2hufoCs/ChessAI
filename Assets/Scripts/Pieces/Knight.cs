@@ -52,7 +52,11 @@ namespace Pieces
                 PieceColor targetColor = targetSquare > 8 ? PieceColor.Black :
                     targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
-                    move.isMoveLegal = false;
+                {
+                    _moveLogic._pieces[targetSquarePos].isDefended = true;
+                    continue;
+                }
+                    
                 
                 moves.Add(move);
             }

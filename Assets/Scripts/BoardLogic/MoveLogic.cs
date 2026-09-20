@@ -15,7 +15,7 @@ public enum PieceColor { None = -1, White = 0, Black = 8}
 public class MoveLogic : MonoBehaviour
 {
     private readonly int[,] _board = new int[8, 8];
-    public readonly Dictionary<Vector2, Piece> _pieces = new();
+    public readonly Dictionary<Vector2Int, Piece> _pieces = new();
     public readonly Dictionary<Vector2, Piece> _piecesAliveAndDead = new();
     
     private readonly Stack<KeyValuePair<Move, Piece>> _movesPlayed = new();
@@ -59,23 +59,24 @@ public class MoveLogic : MonoBehaviour
         // Precomputed stuff
         InitializeKingCastling();
         PrecomputedMoveData precomputedMoves = new(this);
-        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay ==  PieceColor.White ? _whiteKing : _blackKing);
+        RecomputeLegalMoves();
     }
 
     void OnEnable()
     {
-        ActionsBus.OnPlayerMoved += RecomputeTargetedSquares;
+        ActionsBus.OnPlayerMoved += RecomputeLegalMoves;
         ActionsBus.OnPawnPromoted += PromotePawn;
     }
 
     void OnDisable()
     {
-        ActionsBus.OnPlayerMoved -= RecomputeTargetedSquares;
+        ActionsBus.OnPlayerMoved -= RecomputeLegalMoves;
         ActionsBus.OnPawnPromoted -= PromotePawn;
     }
 
-    void RecomputeTargetedSquares()
+    void RecomputeLegalMoves()
     {
+        Debug.Log("next turn, getting legal moves");
         _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay ==  PieceColor.White ? _whiteKing : _blackKing);
     }
 
@@ -146,16 +147,16 @@ public class MoveLogic : MonoBehaviour
 
     public Move MakeMove(Piece piece, Move move, bool trackMove = true)
     {
-        //Piece prePiece = piece.DeepCopy(move.preMovePieceCopy);
-        
         // Before playing move, promotion check
         if (PromotionCheck(piece, move)) return move;
         
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
+        bool isPlayerHuman = data.color == PieceColor.White && BoardSettings.Instance.isWhiteHuman || data.color == PieceColor.Black && BoardSettings.Instance.isBlackHuman;
         
         _board[move.startSquare.y, move.startSquare.x] = 0;
         _board[move.endSquare.y, move.endSquare.x] = value;
+        if (isPlayerHuman) piece.go.transform.position = BoardToWorld(move.endSquare);
 
         _pieces.Remove(move.startSquare);
         // If target pos is taken by other piece, kill it
@@ -164,7 +165,7 @@ public class MoveLogic : MonoBehaviour
             if (pieceToDestroy != piece)
             {
                 move.pieceOnTargetSquare = pieceToDestroy;
-                //_pieces[move.endSquare].go.SetActive(false);
+                if (isPlayerHuman) _pieces[move.endSquare].go.SetActive(false);
                 _pieces.Remove(move.endSquare);
             }
         }
@@ -178,7 +179,6 @@ public class MoveLogic : MonoBehaviour
             TrackPlayedMove(piece, move);
         }
         
-        piece.go.transform.position = BoardToWorld(move.endSquare);
         if (move.rookToCastle == null)
         {
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
@@ -211,6 +211,7 @@ public class MoveLogic : MonoBehaviour
         // Get necessary data
         PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
         int value = (int)data.type + (int)data.color;
+        bool isPlayerHuman = data.color == PieceColor.White && BoardSettings.Instance.isWhiteHuman || data.color == PieceColor.Black && BoardSettings.Instance.isBlackHuman;
         
         // Calculate piece target value (either normal capture or en passant)
         bool enPassant = move.enPassantCapture != null;
@@ -223,12 +224,12 @@ public class MoveLogic : MonoBehaviour
         
         _pieces.Remove(move.endSquare);
         _pieces.TryAdd(move.startSquare, piece);
-        piece.go.transform.position = BoardToWorld(move.startSquare);
+        if (isPlayerHuman) piece.go.transform.position = BoardToWorld(move.startSquare);
         
         // Revive piece at end square
         if (targetValue > 0 && !enPassant)
         {
-            //move.pieceOnTargetSquare.go.SetActive(true);
+            if (isPlayerHuman) move.pieceOnTargetSquare.go.SetActive(true);
             _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
         }
         
@@ -237,7 +238,7 @@ public class MoveLogic : MonoBehaviour
 
     public void HideVisualsBeforeMinmax()
     {
-        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
         {
             piece.Value.go.SetActive(false);
         }
@@ -248,8 +249,9 @@ public class MoveLogic : MonoBehaviour
     /// </summary>
     public void ShowVisualsAfterMinmax()
     {
-        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
         {
+            piece.Value.go.transform.position =  BoardToWorld(piece.Key);
             piece.Value.go.SetActive(true);
         }
     }
@@ -382,7 +384,7 @@ public class MoveLogic : MonoBehaviour
         return false;
     }
     
-    Piece TryDragPiece(Collider2D hit, Vector2 mouseWorldPos, Vector2 snappedWholePos)
+    Piece TryDragPiece(Collider2D hit, Vector2 mouseWorldPos, Vector2Int snappedWholePos)
     {
         if (!hit)
             return null;
@@ -403,7 +405,7 @@ public class MoveLogic : MonoBehaviour
         // For promotion and en-passant
         _heldPawn = _legalGenerator.heldPiece.GetType() == typeof(Pawn) ? (Pawn)_legalGenerator.heldPiece : null;
 
-        Dictionary<Piece, List<Move>> playerMoves = _colorToPlay == PieceColor.White ? _legalGenerator.whiteLegalMoves : _legalGenerator.blackLegalMoves;
+        Dictionary<Piece, List<Move>> playerMoves = _legalGenerator.legalMoves;
         if (playerMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
             _legalGenerator.heldPieceLegalMoves = moves;
     }
@@ -539,7 +541,7 @@ public class MoveLogic : MonoBehaviour
     Dictionary<Vector2, Rook> GetRooks(PieceColor color)
     {
         Dictionary<Vector2, Rook> result = new Dictionary<Vector2, Rook>();
-        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
         {
             if (piece.Value.pieceData.type == PieceType.Rook && piece.Value.pieceData.color == color)
                 result.Add(piece.Key, (Rook)piece.Value);
@@ -593,10 +595,10 @@ public class MoveLogic : MonoBehaviour
         return pos + (Vector2)transform.position - Vector2.one * 3.5f;
     }
 
-    Vector2 WorldToBoard(Vector2 pos)
+    Vector2Int WorldToBoard(Vector2 pos)
     {
         Vector2 snappedPos = new Vector2(pos.x > 0 ? (int)pos.x + 1 : (int)pos.x, pos.y > 0 ? (int)pos.y + 1 : (int)pos.y);
-        return snappedPos + (Vector2)transform.position + Vector2.one * 3;
+        return Vector2Int.RoundToInt(snappedPos + (Vector2)transform.position + Vector2.one * 3);
     }
 
     void Pause(bool pause)
@@ -716,7 +718,7 @@ public class MoveLogic : MonoBehaviour
     void PrintPieces()
     {
         string msg = "";
-        foreach (KeyValuePair<Vector2, Piece> piece in _pieces)
+        foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
         {
             msg += $"{piece.Value} at {piece.Key}; ";
         }
@@ -732,8 +734,6 @@ public struct Move : IEquatable<Move>
     
     public Piece pieceOnTargetSquare;
     public Piece preMoveTargetPiece;
-
-    public bool isMoveLegal;
     
     // Pawns-specific stuff
     public Piece enPassantCapture;
@@ -756,7 +756,6 @@ public struct Move : IEquatable<Move>
         preMoveEnPassantCapture = null;
         preMoveRookCastle = null;
 
-        isMoveLegal = true;
         enPassantCapture = null;
         rookToCastle = null;
         rookStartSquare = -Vector2Int.one;

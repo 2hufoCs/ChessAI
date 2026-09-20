@@ -345,7 +345,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoardSettings
   boardFlipped: 0
-  isWhiteHuman: 1
+  isWhiteHuman: 0
   isBlackHuman: 1
   debugLegalMoves: 1
 --- !u!1 &519420028

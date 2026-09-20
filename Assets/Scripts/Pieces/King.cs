@@ -66,7 +66,11 @@ namespace Pieces
                 int targetSquare = _moveLogic.GetSquare(targetSquarePos);
                 PieceColor targetColor = targetSquare > 8 ? PieceColor.Black : targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
-                    move.isMoveLegal = false;
+                {
+                    _moveLogic._pieces[targetSquarePos].isDefended = true;
+                    continue;
+                }
+                    
                 
                 moves.Add(move);
             }
@@ -132,7 +136,6 @@ namespace Pieces
                 {
                     startSquare = snappedWholePos,
                     endSquare = newKingPos,
-                    isMoveLegal = true,
                     rookToCastle = rook.Value,
                     rookStartSquare = rookSquarePos,
                     rookEndSquare = newRookPos,

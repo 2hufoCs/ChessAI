@@ -6,9 +6,9 @@ namespace Pieces
     public class Rook : Piece
     {
         public bool hasMoved;
-        public Dictionary<Vector2, Piece> _pieces;
+        public Dictionary<Vector2Int, Piece> _pieces;
         
-        public Rook(PieceData pieceData, GameObject go,  Dictionary<Vector2, Piece> pieces)
+        public Rook(PieceData pieceData, GameObject go,  Dictionary<Vector2Int, Piece> pieces)
         {
             this.pieceData = pieceData;
             this.go = go;

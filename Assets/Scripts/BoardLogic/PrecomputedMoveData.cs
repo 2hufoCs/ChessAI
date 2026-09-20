@@ -44,7 +44,7 @@ public class PrecomputedMoveData
         }    
     }
 
-    public static List<Move> GenerateSlidingMoves(Piece piece, Vector2 startPosWorld, Dictionary<Vector2, Piece> pieces)
+    public static List<Move> GenerateSlidingMoves(Piece piece, Vector2 startPosWorld, Dictionary<Vector2Int, Piece> pieces)
     {
         List<Move> moves = new List<Move>();
         Vector2Int startPos = Vector2Int.RoundToInt(startPosWorld);
@@ -54,8 +54,7 @@ public class PrecomputedMoveData
         
         for (int directionIndex = startDirIndex; directionIndex < endDirIndex; directionIndex++)
         {
-            List<Move> newDirMoves = new();
-            List<Vector2Int> piecePins = new();
+            List<Vector2Int> newDirMoves = new();
             Vector2Int pinnedPiecePos = -Vector2Int.one;
             for (int n = 0; n < numSquaresToEdges[startPos.x, startPos.y, directionIndex]; n++)
             {
@@ -69,19 +68,24 @@ public class PrecomputedMoveData
 
                 Move move = new(startPos, targetSquare, piece.DeepCopy(piece, piece));
 
+                // Add pin if there's an enemy piece between current piece and king
                 if (targetType == PieceType.King && targetSquareColor == enemyColor && pinnedPiecePos != -Vector2Int.one)
                 {
-                    piecePins.Add(startPos);
-                    LegalMoveLogic.pins[pieces[pinnedPiecePos]] = piecePins;
+                    newDirMoves.Add(startPos);
+                    LegalMoveLogic.pins[pieces[pinnedPiecePos]] = newDirMoves;
                     break;
                 }
                 
                 // Blocked by friendly piece, can't move any further in that direction
                 if (friendlyColor == targetSquareColor)
-                    move.isMoveLegal = false;
+                {
+                    pieces[targetSquare].isDefended = true;
+                    break;
+                }
+                    
                 
-                if (pinnedPiecePos == -Vector2Int.one) newDirMoves.Add(move);
-                piecePins.Add(targetSquare);
+                if (pinnedPiecePos == -Vector2Int.one) moves.Add(move);
+                newDirMoves.Add(targetSquare);
 
                 // Pin up to 1 piece, continue calculating afterwards
                 if (enemyColor == targetSquareColor)
@@ -89,12 +93,7 @@ public class PrecomputedMoveData
                     if (pinnedPiecePos != -Vector2Int.one) break; // only a single piece can be pinned in 1 direction
                     pinnedPiecePos = targetSquare;
                 }
-                
-                // Can't move any further in this direction after capturing opponent's piece
-                if (targetSquareColor == friendlyColor)
-                    break;
             }
-            moves.AddRange(newDirMoves);
         }
 
         return moves;

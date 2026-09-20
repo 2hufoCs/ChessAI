@@ -5,9 +5,9 @@ namespace Pieces
 {
     public class Queen : Piece
     {
-        public Dictionary<Vector2, Piece> _pieces;
+        public Dictionary<Vector2Int, Piece> _pieces;
 
-        public Queen(PieceData pieceData, GameObject go, Dictionary<Vector2, Piece> pieces)
+        public Queen(PieceData pieceData, GameObject go, Dictionary<Vector2Int, Piece> pieces)
         {
             this.pieceData = pieceData;
             this.go = go;

@@ -9,9 +9,9 @@ namespace Pieces
         public bool doubleMovedLastTurn;
         
         public MoveLogic _moveLogic;
-        public Dictionary<Vector2, Piece> _pieces = new();
+        public Dictionary<Vector2Int, Piece> _pieces = new();
         
-        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2, Piece> pieces)
+        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2Int, Piece> pieces)
         {
             this.pieceData = pieceData;
             this.go = go;
@@ -81,8 +81,7 @@ namespace Pieces
             {
                 if (leftPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), 
-                        isMoveLegal = true, enPassantCapture = leftPawn.DeepCopy(leftPawn)};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = leftPawn.DeepCopy(leftPawn)};
                     newMove.preMoveEnPassantCapture = leftPawn.DeepCopy(leftPawn);
                     //Debug.Log("can make en passant, go to kill would be " + newMove.enPassantCapture);
                     moves.Add(newMove);
@@ -94,7 +93,7 @@ namespace Pieces
             {
                 if (rightPawn.doubleMovedLastTurn)
                 {
-                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), isMoveLegal = true, enPassantCapture = rightPawn.DeepCopy(rightPawn)};
+                    Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = rightPawn.DeepCopy(rightPawn)};
                     newMove.preMoveEnPassantCapture = rightPawn.DeepCopy(rightPawn);
                     moves.Add(newMove);
                 }
@@ -125,7 +124,10 @@ namespace Pieces
             if (targetColor == PieceColor.None)
                 return false;
             if (pieceData.color == targetColor)
-                move.isMoveLegal = false;
+            {
+                _pieces[targetSquarePos].isDefended = true;
+                return false;
+            }
 
             moves.Add(move);
             return true;
