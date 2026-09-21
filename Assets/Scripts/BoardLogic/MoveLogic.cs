@@ -55,6 +55,8 @@ public class MoveLogic : MonoBehaviour
         
         InitializeBaseCastlingData();
         LoadPositionFromFen(_basePositionFen);
+        _legalGenerator.whiteKing = _whiteKing;
+        _legalGenerator.blackKing = _blackKing;
         
         // Precomputed stuff
         InitializeKingCastling();
@@ -77,7 +79,7 @@ public class MoveLogic : MonoBehaviour
     void RecomputeLegalMoves()
     {
         Debug.Log("next turn, getting legal moves");
-        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay ==  PieceColor.White ? _whiteKing : _blackKing);
+        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
     }
 
     void InitializeBaseCastlingData()

@@ -34,8 +34,7 @@ public class Minmax : MonoBehaviour
             return 1;
         var initialTime = DateTime.Now;
 
-        King king = _moveLogic._colorToPlay == PieceColor.White ? _moveLogic._whiteKing : _moveLogic._blackKing;
-        Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic._pieces, king);
+        Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic._pieces, _moveLogic._colorToPlay);
         int numPositions = 0;
         
         legalMoveTime += DateTime.Now - initialTime;
@@ -72,8 +71,7 @@ public class Minmax : MonoBehaviour
     [Button]
     void PerformanceTest()
     {
-        King king = _moveLogic._colorToPlay == PieceColor.White ? _moveLogic._whiteKing : _moveLogic._blackKing;
-        Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic._pieces, king);
+        Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic._pieces, _moveLogic._colorToPlay);
         int numPositions = 0;
 
         foreach (KeyValuePair<Piece, List<Move>> pieceMoves in moves)

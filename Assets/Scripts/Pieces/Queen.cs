@@ -28,7 +28,7 @@ namespace Pieces
             return q2;
         }
 
-        public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
         {
             List<Move> moves = PrecomputedMoveData.GenerateSlidingMoves(this, initialPos, _pieces);
             return moves;

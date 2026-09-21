@@ -33,7 +33,7 @@ namespace Pieces
             return k2;
         }
 
-        public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
         {
             List<Move> moves = new();
             

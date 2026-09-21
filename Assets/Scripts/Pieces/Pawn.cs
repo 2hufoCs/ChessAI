@@ -43,7 +43,7 @@ namespace Pieces
             return p2;
         }
 
-        public override List<Move> GetPseudolegalMoves(Vector2 initialPos, bool includeDefends = false)
+        public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
         {
             List<Move> moves = new();
             Vector2Int snappedPos = Vector2Int.RoundToInt(initialPos);
