@@ -24,6 +24,7 @@ public class MoveLogic : MonoBehaviour
     private readonly Stack<int[,]> _boardStates = new();
     private readonly Stack<Dictionary<Vector2Int, Piece>> _piecesStates = new();
     private readonly Stack<Dictionary<Piece, List<Move>>> _legalMovesStates = new();
+    public Dictionary<GameObject, Piece> _goToPiecesStates = new();
     
     [Header("Main parameters")] 
     public PieceColor _colorToPlay = PieceColor.White;
@@ -85,7 +86,7 @@ public class MoveLogic : MonoBehaviour
     void RecomputeLegalMoves()
     {
         Debug.Log("next turn, getting legal moves");
-        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
+        _legalMovesStates.Push(_legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay));
         
         // Store board and pieces states
         _boardStates.Push(_board.Clone() as int[,]);
@@ -102,7 +103,7 @@ public class MoveLogic : MonoBehaviour
 
     void ReassignLegalMoves()
     {
-        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
+        _legalGenerator.legalMoves = _legalMovesStates.Count > 1 ? _legalMovesStates.Pop() : _legalMovesStates.Peek();
     }
 
     void InitializeBaseCastlingData()
@@ -346,7 +347,7 @@ public class MoveLogic : MonoBehaviour
 
     public void UnmakeLastMoveState()
     {
-        Debug.Log("before removing from stack: " + _boardStates.Count);
+        //Debug.Log("before removing from stack: " + _boardStates.Count);
         UnmakeMoveState();
         ShowVisualsAfterComputing();
     }
@@ -463,7 +464,10 @@ public class MoveLogic : MonoBehaviour
 
         Dictionary<Piece, List<Move>> playerMoves = _legalGenerator.legalMoves;
         if (playerMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
+        {
             _legalGenerator.heldPieceLegalMoves = moves;
+            Debug.Log("assigning held piece legal moves at least");
+        }
     }
     
     /// <summary>
@@ -497,9 +501,9 @@ public class MoveLogic : MonoBehaviour
         _pieces.Add(pos, newPiece);
         _piecesAliveAndDead.Add(pos, newPiece);
         
-        if (newPiece.pieceData.color == PieceColor.White)
-            _legalGenerator.whiteTargetedSquares.Add(newPiece, new List<Vector2Int>());
-        else _legalGenerator.blackTargetedSquares.Add(newPiece, new List<Vector2Int>());
+        // if (newPiece.pieceData.color == PieceColor.White)
+        //     _legalGenerator.whiteTargetedSquares.Add(newPiece, new List<Vector2Int>());
+        // else _legalGenerator.blackTargetedSquares.Add(newPiece, new List<Vector2Int>());
         _legalGenerator.goToPieces.Add(newGo, newPiece);
         
         // Keep track of both kings

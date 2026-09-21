@@ -385,7 +385,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MoveLogic
   _colorToPlay: 0
-  _basePositionFen: rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1
+  _basePositionFen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
   _piecePrefab: {fileID: 1194715645466863060, guid: 8eb0796d5921c6144b0e88729c7045f2, type: 3}
   _piecesData:
   - {fileID: 11400000, guid: 2a37466a4cfc1b54baf4845b24f00492, type: 2}
@@ -2819,7 +2819,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 513466249}
         m_TargetAssemblyTypeName: MoveLogic, Assembly-CSharp
-        m_MethodName: UnmakeMoveState
+        m_MethodName: UnmakeLastMoveState
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

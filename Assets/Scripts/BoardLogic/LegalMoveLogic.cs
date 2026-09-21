@@ -66,6 +66,11 @@ public class LegalMoveLogic : MonoBehaviour
         Instance = this;
     }
 
+    public void AssignLegalMoves()
+    {
+        
+    }
+
     public Dictionary<Piece, List<Move>> GetAllLegalMoves(Dictionary<Vector2Int, Piece> pieces, PieceColor colorToPlay)
     {
         King targetKing = colorToPlay ==  PieceColor.Black ? whiteKing : blackKing;
