@@ -14,12 +14,16 @@ public enum PieceColor { None = -1, White = 0, Black = 8}
 
 public class MoveLogic : MonoBehaviour
 {
-    private readonly int[,] _board = new int[8, 8];
-    public readonly Dictionary<Vector2Int, Piece> _pieces = new();
+    private int[,] _board = new int[8, 8];
+    public Dictionary<Vector2Int, Piece> _pieces = new();
     public readonly Dictionary<Vector2, Piece> _piecesAliveAndDead = new();
     
     private readonly Stack<KeyValuePair<Move, Piece>> _movesPlayed = new();
     private readonly Stack<KeyValuePair<Move, Piece>> _undoMoves = new();
+
+    private readonly Stack<int[,]> _boardStates = new();
+    private readonly Stack<Dictionary<Vector2Int, Piece>> _piecesStates = new();
+    private readonly Stack<Dictionary<Piece, List<Move>>> _legalMovesStates = new();
     
     [Header("Main parameters")] 
     public PieceColor _colorToPlay = PieceColor.White;
@@ -67,18 +71,37 @@ public class MoveLogic : MonoBehaviour
     void OnEnable()
     {
         ActionsBus.OnPlayerMoved += RecomputeLegalMoves;
+        ActionsBus.OnPlayerUnmoved += ReassignLegalMoves;
         ActionsBus.OnPawnPromoted += PromotePawn;
     }
 
     void OnDisable()
     {
         ActionsBus.OnPlayerMoved -= RecomputeLegalMoves;
+        ActionsBus.OnPlayerUnmoved -= ReassignLegalMoves;
         ActionsBus.OnPawnPromoted -= PromotePawn;
     }
 
     void RecomputeLegalMoves()
     {
         Debug.Log("next turn, getting legal moves");
+        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
+        
+        // Store board and pieces states
+        _boardStates.Push(_board.Clone() as int[,]);
+        
+        // Make deep copy of every piece
+        Dictionary<Vector2Int, Piece> piecesCopy = new();
+        foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
+        {
+            Piece copy = piece.Value.DeepCopy(piece.Value);
+            piecesCopy[piece.Key] = copy;
+        }
+        _piecesStates.Push(piecesCopy);
+    }
+
+    void ReassignLegalMoves()
+    {
         _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
     }
 
@@ -238,7 +261,7 @@ public class MoveLogic : MonoBehaviour
         SpecialPieceUnmake(piece, move, trackMove);
     }
 
-    public void HideVisualsBeforeMinmax()
+    public void HideVisualsBeforeComputing()
     {
         foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
         {
@@ -249,7 +272,7 @@ public class MoveLogic : MonoBehaviour
     /// <summary>
     /// Actually computes visuals once all abstract calculations have been made, such as: enabled/disabled pieces
     /// </summary>
-    public void ShowVisualsAfterMinmax()
+    public void ShowVisualsAfterComputing()
     {
         foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
         {
@@ -281,6 +304,8 @@ public class MoveLogic : MonoBehaviour
             Debug.Log($"en passant capturer is now at {move.startSquare}, capture is at {WorldToBoard(move.enPassantCapture.go.transform.position)}, reset at pos {capturedPos.y +  pawnOffset}, {capturedPos.x}");
         }
         
+        // Resolve king check
+        
         // Also undo special piece checks
         if (move.rookToCastle == null)
         {
@@ -295,6 +320,35 @@ public class MoveLogic : MonoBehaviour
             UnmakeMove(rookToUncastle, new Move(move.rookStartSquare, move.rookEndSquare, piece.DeepCopy(piece)));
             move.rookToCastle.hasMoved = false;
         }
+    }
+
+    public void UnmakeMoveState()
+    {
+        if (_boardStates.Count == 0 || _piecesStates.Count == 0)
+        {
+            Debug.LogError("trying to unmake move, but stack is empty");
+            return;
+        }
+
+        // Remove last stored state
+        if (_boardStates.Count > 1)
+        {
+            _boardStates.Pop();
+            _piecesStates.Pop();
+            _colorToPlay =  _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White; // Don't change turn when base pos
+        }
+        
+        _board = _boardStates.Peek().Clone() as int[,];
+        _pieces = _piecesStates.Peek().ToDictionary(x => x.Key, x => x.Value);
+        
+        ActionsBus.OnPlayerUnmoved();
+    }
+
+    public void UnmakeLastMoveState()
+    {
+        Debug.Log("before removing from stack: " + _boardStates.Count);
+        UnmakeMoveState();
+        ShowVisualsAfterComputing();
     }
     
     public void UnmakeLastMove()
