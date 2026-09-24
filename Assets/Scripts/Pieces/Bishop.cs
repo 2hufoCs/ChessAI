@@ -5,7 +5,7 @@ namespace Pieces
 {
     public class Bishop : Piece
     {
-        MoveLogic  _moveLogic;
+        MoveLogic _moveLogic;
         
         public Bishop(PieceData pieceData, GameObject go, MoveLogic moveLogic)
         {

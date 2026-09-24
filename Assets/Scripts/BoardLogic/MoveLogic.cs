@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
@@ -20,11 +19,6 @@ public class MoveLogic : MonoBehaviour
     
     private readonly Stack<KeyValuePair<Move, Piece>> _movesPlayed = new();
     private readonly Stack<KeyValuePair<Move, Piece>> _undoMoves = new();
-
-    private readonly Stack<int[,]> _boardStates = new();
-    private readonly Stack<Dictionary<Vector2Int, Piece>> _piecesStates = new();
-    private readonly Stack<Dictionary<Piece, List<Move>>> _legalMovesStates = new();
-    public Dictionary<GameObject, Piece> _goToPiecesStates = new();
     
     [Header("Main parameters")] 
     public PieceColor _colorToPlay = PieceColor.White;
@@ -57,6 +51,7 @@ public class MoveLogic : MonoBehaviour
     void Start()
     {
         _legalGenerator = LegalMoveLogic.Instance;
+        BoardState.boardStates = new();
         
         InitializeBaseCastlingData();
         LoadPositionFromFen(_basePositionFen);
@@ -72,38 +67,26 @@ public class MoveLogic : MonoBehaviour
     void OnEnable()
     {
         ActionsBus.OnPlayerMoved += RecomputeLegalMoves;
-        ActionsBus.OnPlayerUnmoved += ReassignLegalMoves;
         ActionsBus.OnPawnPromoted += PromotePawn;
     }
 
     void OnDisable()
     {
         ActionsBus.OnPlayerMoved -= RecomputeLegalMoves;
-        ActionsBus.OnPlayerUnmoved -= ReassignLegalMoves;
         ActionsBus.OnPawnPromoted -= PromotePawn;
     }
 
     void RecomputeLegalMoves()
     {
-        Debug.Log("next turn, getting legal moves");
-        _legalMovesStates.Push(_legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay));
-        
-        // Store board and pieces states
-        _boardStates.Push(_board.Clone() as int[,]);
-        
-        // Make deep copy of every piece
-        Dictionary<Vector2Int, Piece> piecesCopy = new();
-        foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
-        {
-            Piece copy = piece.Value.DeepCopy(piece.Value);
-            piecesCopy[piece.Key] = copy;
-        }
-        _piecesStates.Push(piecesCopy);
-    }
+        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
+        BoardState newState = new(_board, _pieces, _legalGenerator.legalMoves, _legalGenerator.goToPieces, _colorToPlay);
 
-    void ReassignLegalMoves()
-    {
-        _legalGenerator.legalMoves = _legalMovesStates.Peek();
+        if (_legalGenerator.legalMoves.Count == 0)
+        {
+            if (_colorToPlay == PieceColor.Black ? _blackKing.isInCheck : _whiteKing.isInCheck)
+                ActionsBus.OnCheckmate(_colorToPlay);
+            else ActionsBus.OnDraw(DrawOutcomes.Stalemate);
+        }
     }
 
     void InitializeBaseCastlingData()
@@ -200,19 +183,34 @@ public class MoveLogic : MonoBehaviour
             
         _pieces.TryAdd(move.endSquare, piece);
         if (trackMove)
-        {
-            //move.preMovePieceCopy = prePiece;
             TrackPlayedMove(piece, move);
-        }
+        
+        // If game has ended
+        if (GameEndChecks(move)) return move; 
         
         if (move.rookToCastle == null)
         {
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
-            if (trackMove)
-                ActionsBus.OnPlayerMoved();
+            if (trackMove) ActionsBus.OnPlayerMoved();
         }
-
+        else
+        {
+            Vector2Int startPos = Vector2Int.FloorToInt(WorldToBoard(move.rookToCastle.go.transform.position));
+            Move rookMove = new Move(startPos, move.rookEndSquare, move.rookToCastle.DeepCopy(move.rookToCastle));
+            MakeMove(move.rookToCastle, rookMove);
+        }
         return move;
+    }
+
+    bool GameEndChecks(Move move)
+    {
+        if (move.drawOutcome != DrawOutcomes.None)
+        {
+            ActionsBus.OnDraw(move.drawOutcome);
+            return true;
+        }
+        
+        return false;
     }
 
     void TrackPlayedMove(Piece piece, Move move)
@@ -232,35 +230,35 @@ public class MoveLogic : MonoBehaviour
         _undoMoves.Clear();
     }
 
-    public void UnmakeMove(Piece piece, Move move, bool trackMove = true)
-    {
-        // Get necessary data
-        PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
-        int value = (int)data.type + (int)data.color;
-        bool isPlayerHuman = data.color == PieceColor.White && BoardSettings.Instance.isWhiteHuman || data.color == PieceColor.Black && BoardSettings.Instance.isBlackHuman;
-        
-        // Calculate piece target value (either normal capture or en passant)
-        bool enPassant = move.enPassantCapture != null;
-        int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
-            move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
-        
-        // Update board matrix and pieces dict
-        _board[move.startSquare.y, move.startSquare.x] = value;
-        _board[move.endSquare.y, move.endSquare.x] = targetValue;
-        
-        _pieces.Remove(move.endSquare);
-        _pieces.TryAdd(move.startSquare, piece);
-        if (isPlayerHuman) piece.go.transform.position = BoardToWorld(move.startSquare);
-        
-        // Revive piece at end square
-        if (targetValue > 0 && !enPassant)
-        {
-            if (isPlayerHuman) move.pieceOnTargetSquare.go.SetActive(true);
-            _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
-        }
-        
-        SpecialPieceUnmake(piece, move, trackMove);
-    }
+    // public void UnmakeMove(Piece piece, Move move, bool trackMove = true)
+    // {
+    //     // Get necessary data
+    //     PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
+    //     int value = (int)data.type + (int)data.color;
+    //     bool isPlayerHuman = data.color == PieceColor.White && BoardSettings.Instance.isWhiteHuman || data.color == PieceColor.Black && BoardSettings.Instance.isBlackHuman;
+    //     
+    //     // Calculate piece target value (either normal capture or en passant)
+    //     bool enPassant = move.enPassantCapture != null;
+    //     int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
+    //         move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
+    //     
+    //     // Update board matrix and pieces dict
+    //     _board[move.startSquare.y, move.startSquare.x] = value;
+    //     _board[move.endSquare.y, move.endSquare.x] = targetValue;
+    //     
+    //     _pieces.Remove(move.endSquare);
+    //     _pieces.TryAdd(move.startSquare, piece);
+    //     if (isPlayerHuman) piece.go.transform.position = BoardToWorld(move.startSquare);
+    //     
+    //     // Revive piece at end square
+    //     if (targetValue > 0 && !enPassant)
+    //     {
+    //         if (isPlayerHuman) move.pieceOnTargetSquare.go.SetActive(true);
+    //         _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
+    //     }
+    //     
+    //     SpecialPieceUnmake(piece, move, trackMove);
+    // }
 
     public void HideVisualsBeforeComputing()
     {
@@ -282,89 +280,29 @@ public class MoveLogic : MonoBehaviour
         }
     }
 
-    void SpecialPieceUnmake(Piece piece, Move move, bool trackMove = true)
+    public void UnmakeMoveState(bool changeTurn = true)
     {
-        
-        bool enPassant = move.enPassantCapture != null;
-        int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
-            move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
-
-        // Revive en passant
-        if (enPassant && targetValue > 0)
-        {
-            move.enPassantCapture.go.SetActive(true);
-            Vector2Int capturedPos = Vector2Int.RoundToInt(WorldToBoard(move.enPassantCapture.go.transform.position));
-            _pieces.Add(capturedPos, move.enPassantCapture);
-                
-            // Manually modify board matrix cuz it's not updated correctly (piece dict is fine tho)
-            int pawnOffset = piece.pieceData.color == PieceColor.White ? -1 : 1;
-            _board[move.endSquare.y + pawnOffset, move.endSquare.x] = 0;
-            _board[capturedPos.y +  pawnOffset * -1, capturedPos.x] = 0;
-            _board[capturedPos.y, capturedPos.x] = targetValue;
-                
-            Debug.Log($"en passant capturer is now at {move.startSquare}, capture is at {WorldToBoard(move.enPassantCapture.go.transform.position)}, reset at pos {capturedPos.y +  pawnOffset}, {capturedPos.x}");
-        }
-        
-        // Resolve king check
-        
-        // Also undo special piece checks
-        if (move.rookToCastle == null)
-        {
-            _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
-            if (trackMove)
-                ActionsBus.OnPlayerMoved();
-        }
-        else
-        {
-            // Uncastle rook along with king that just uncastled
-            Rook rookToUncastle = (Rook)move.rookToCastle.DeepCopy(move.rookToCastle);
-            UnmakeMove(rookToUncastle, new Move(move.rookStartSquare, move.rookEndSquare, piece.DeepCopy(piece)));
-            move.rookToCastle.hasMoved = false;
-        }
-    }
-
-    public void UnmakeMoveState()
-    {
-        if (_boardStates.Count == 0 || _piecesStates.Count == 0)
+        if (BoardState.boardStates.Count == 0)
         {
             Debug.LogError("trying to unmake move, but stack is empty");
             return;
         }
 
         // Remove last stored state
-        if (_boardStates.Count > 1)
+        if (changeTurn && BoardState.boardStates.Count > 1)
         {
-            _boardStates.Pop();
-            _piecesStates.Pop();
+            BoardState.UndoBoardState();
             _colorToPlay =  _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White; // Don't change turn when base pos
         }
-        if (_legalMovesStates.Count > 1) _legalMovesStates.Pop();
         
-        _board = _boardStates.Peek().Clone() as int[,];
-        _pieces = _piecesStates.Peek().ToDictionary(x => x.Key, x => x.Value);
-        
-        ActionsBus.OnPlayerUnmoved();
+        // Load previously stored board state
+        BoardState.boardStates.Peek().LoadBoardState(ref _board, ref _pieces, ref _legalGenerator.legalMoves, ref _legalGenerator.goToPieces, ref _colorToPlay);
     }
 
     public void UnmakeLastMoveState()
     {
-        //Debug.Log("before removing from stack: " + _boardStates.Count);
         UnmakeMoveState();
         ShowVisualsAfterComputing();
-    }
-    
-    public void UnmakeLastMove()
-    {
-        if (_movesPlayed.Count == 0) return;
-        
-        //Debug.Log("unmaking move, did it have rook to castle: " + move.Key.rookToCastle);
-        KeyValuePair<Move, Piece> moveDict = _movesPlayed.Pop();
-        Move move = moveDict.Key;
-        Piece piece = moveDict.Value;
-
-        _undoMoves.Push(new KeyValuePair<Move, Piece>(move, piece));
-
-        UnmakeMove(piece, move, false);
     }
 
     
@@ -381,14 +319,6 @@ public class MoveLogic : MonoBehaviour
 
     void SpecialPieceMoves(Piece piece, Move move)
     {
-        // Also move rook for castling
-        if (move.rookToCastle != null)
-        {
-            Vector2Int startPos = Vector2Int.FloorToInt(WorldToBoard(move.rookToCastle.go.transform.position));
-            Move rookMove = new Move(startPos, move.rookEndSquare, move.rookToCastle.DeepCopy(move.rookToCastle));
-            MakeMove(move.rookToCastle, rookMove);
-        }
-        
         // Prevent castling if either king or rook moved
         if (piece.pieceData.type == PieceType.Rook)
         {
@@ -434,7 +364,7 @@ public class MoveLogic : MonoBehaviour
             int endRank = piece.pieceData.color == PieceColor.White ? 7 : 0;
             if (move.endSquare.y == endRank)
             {
-                ShowPromotionChoice((Pawn)piece, move);
+                ShowPromotionChoice(_heldPawn, move);
                 return true;
             }
         }
@@ -456,18 +386,28 @@ public class MoveLogic : MonoBehaviour
 
     void InitializeDraggedPiece(Piece pieceToDrag, Vector2Int snappedWholePos)
     {
-        _legalGenerator.heldPiece = _legalGenerator.goToPieces[pieceToDrag.go];
+        _legalGenerator.heldPiece = _legalGenerator.GetPieceFromGO(pieceToDrag.go);
         _legalGenerator.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
         _legalGenerator.heldPieceStartSquare = snappedWholePos;
         
         // For promotion and en-passant
         _heldPawn = _legalGenerator.heldPiece.GetType() == typeof(Pawn) ? (Pawn)_legalGenerator.heldPiece : null;
-
-        Dictionary<Piece, List<Move>> playerMoves = _legalGenerator.legalMoves;
-        if (playerMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
+        
+        if (_legalGenerator.legalMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
         {
             _legalGenerator.heldPieceLegalMoves = moves;
-            Debug.Log("assigning held piece legal moves at least");
+            //Debug.Log("assigning held piece legal moves at least, color: " + _legalGenerator.heldPiece.pieceData.color);
+        }
+        else // for debug, not supposed to happen
+        {
+            foreach (KeyValuePair<Piece, List<Move>> kvp in _legalGenerator.legalMoves)
+            {
+                foreach (Move move in kvp.Value)
+                {
+                    Debug.Log($"{kvp.Key.pieceData.color} {kvp.Key.pieceData.type} from {move.startSquare} to {move.endSquare}");
+                }
+            }
+            Debug.LogError("held piece isn't in legal moves");
         }
     }
     
@@ -494,7 +434,7 @@ public class MoveLogic : MonoBehaviour
         if (_pieces.ContainsKey(pos))
         {
             Debug.Log("destroying piece as it's spawned");
-            Destroy(_pieces[pos].go);
+            _pieces[pos].go.SetActive(false);
             _pieces.Remove(pos);
         }
 
@@ -687,6 +627,7 @@ public class MoveLogic : MonoBehaviour
 
     void PromotePawn(PieceType newType)
     {
+        Pawn oldPawn = (Pawn)_heldPawn.DeepCopy(_heldPawn);
         Vector2Int pos = Vector2Int.RoundToInt(WorldToBoard(_heldPawn.go.transform.position));
         
         // Pawn is trans now
@@ -705,7 +646,7 @@ public class MoveLogic : MonoBehaviour
         {
             if (pieceToDestroy != promotedPawn)
             {
-                Destroy(_pieces[pos].go);
+                _pieces[pos].go.SetActive(false);
                 _pieces.Remove(pos);
             }
         }
@@ -718,6 +659,11 @@ public class MoveLogic : MonoBehaviour
         
         _colorToPlay = _colorToPlay == PieceColor.White ? PieceColor.Black : PieceColor.White;
         IsGamePaused = false;
+        
+        _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
+        BoardState newState = new(_board, _pieces, _legalGenerator.legalMoves, _legalGenerator.goToPieces, _colorToPlay);
+        newState.SetPawnBeforePromotion(oldPawn);
+        newState.SetPromotedPiece(promotedPawn);
     }
 
     bool IsPieceEquivalent(Piece piece1, Piece piece2)
@@ -784,57 +730,5 @@ public class MoveLogic : MonoBehaviour
             msg += $"{piece.Value} at {piece.Key}; ";
         }
         Debug.Log(msg);
-    }
-}
-
-public struct Move : IEquatable<Move>
-{
-    public Vector2Int startSquare;
-    public Vector2Int endSquare;
-    public Piece preMovePieceCopy;
-    
-    public Piece pieceOnTargetSquare;
-    public Piece preMoveTargetPiece;
-    
-    // Pawns-specific stuff
-    public Piece enPassantCapture;
-    public Piece preMoveEnPassantCapture;
-    
-    // For castling
-    public Rook rookToCastle;
-    public Rook preMoveRookCastle;
-    public Vector2Int rookStartSquare;
-    public Vector2Int rookEndSquare;
-
-    public Move(Vector2Int startSquare, Vector2Int endSquare, Piece preMovePieceCopy)
-    {
-        this.startSquare = startSquare;
-        this.endSquare = endSquare;
-        this.preMovePieceCopy = preMovePieceCopy;
-        pieceOnTargetSquare = null;
-        
-        preMoveTargetPiece = null;
-        preMoveEnPassantCapture = null;
-        preMoveRookCastle = null;
-
-        enPassantCapture = null;
-        rookToCastle = null;
-        rookStartSquare = -Vector2Int.one;
-        rookEndSquare = -Vector2Int.one;
-    }
-
-    public bool Equals(Move other)
-    {
-        return startSquare.Equals(other.startSquare) && endSquare.Equals(other.endSquare);
-    }
-
-    public override bool Equals(object obj)
-    {
-        return obj is Move other && Equals(other);
-    }
-
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(startSquare, endSquare);
     }
 }

@@ -35,6 +35,7 @@ namespace Pieces
             p2.pieceData = p1.pieceData;
             p2.go = p1.go;
             p2._moveLogic = p1._moveLogic;
+            p2._moveLogic = p1._moveLogic;
             p2.disableEnPassantNextTurn = p1.disableEnPassantNextTurn;
             p2.doubleMovedLastTurn = p1.doubleMovedLastTurn;
             return p2;

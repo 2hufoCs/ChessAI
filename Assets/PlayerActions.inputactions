@@ -15,6 +15,26 @@
                     "interactions": "",
                     "initialStateCheck": false,
                     "priority": 0
+                },
+                {
+                    "name": "OnUndo",
+                    "type": "Button",
+                    "id": "64618d6c-49e6-49a1-87d4-e1f97f206a4a",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "OnRedo",
+                    "type": "Button",
+                    "id": "da3e5030-2b27-4d28-aa55-d9496da945c4",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
                 }
             ],
             "bindings": [
@@ -26,6 +46,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "OnClick",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d9c52a61-04b2-4cea-88b4-2e752be7ca57",
+                    "path": "<Keyboard>/leftArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "OnUndo",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "aa859f5f-a48b-420a-9a0d-1bb2043a4530",
+                    "path": "<Keyboard>/rightArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "OnRedo",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
