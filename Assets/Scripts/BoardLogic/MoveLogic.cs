@@ -103,7 +103,7 @@ public class MoveLogic : MonoBehaviour
 
     void ReassignLegalMoves()
     {
-        _legalGenerator.legalMoves = _legalMovesStates.Count > 1 ? _legalMovesStates.Pop() : _legalMovesStates.Peek();
+        _legalGenerator.legalMoves = _legalMovesStates.Peek();
     }
 
     void InitializeBaseCastlingData()
@@ -338,6 +338,7 @@ public class MoveLogic : MonoBehaviour
             _piecesStates.Pop();
             _colorToPlay =  _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White; // Don't change turn when base pos
         }
+        if (_legalMovesStates.Count > 1) _legalMovesStates.Pop();
         
         _board = _boardStates.Peek().Clone() as int[,];
         _pieces = _piecesStates.Peek().ToDictionary(x => x.Key, x => x.Value);
@@ -576,19 +577,19 @@ public class MoveLogic : MonoBehaviour
         switch (data.type)
         {
             case PieceType.Pawn:
-                newPiece = new Pawn(data, pieceObject, this, _pieces);
+                newPiece = new Pawn(data, pieceObject, this);
                 break;
             case PieceType.Knight:
                 newPiece = new Knight(data, pieceObject, this);
                 break;
             case PieceType.Bishop:
-                newPiece = new Bishop(data, pieceObject, _pieces);
+                newPiece = new Bishop(data, pieceObject, this);
                 break;
             case PieceType.Rook:
-                newPiece = new Rook(data, pieceObject, _pieces);
+                newPiece = new Rook(data, pieceObject, this);
                 break;
             case PieceType.Queen:
-                newPiece = new Queen(data, pieceObject, _pieces);
+                newPiece = new Queen(data, pieceObject, this);
                 break;
             case PieceType.King:
                 newPiece = new King(data, pieceObject, this);

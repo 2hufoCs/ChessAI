@@ -9,14 +9,12 @@ namespace Pieces
         public bool doubleMovedLastTurn;
         
         public MoveLogic _moveLogic;
-        public Dictionary<Vector2Int, Piece> _pieces = new();
         
-        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic, Dictionary<Vector2Int, Piece> pieces)
+        public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic)
         {
             this.pieceData = pieceData;
             this.go = go;
             _moveLogic = moveLogic;
-            _pieces = pieces;
         }
 
         public override Piece DeepCopy(Piece pieceToCopy, Piece pieceToOverwrite = null)
@@ -25,7 +23,7 @@ namespace Pieces
 
             if (pieceToOverwrite == null)
             {
-                Pawn pawn = new(p1.pieceData, p1.go, p1._moveLogic, p1._pieces)
+                Pawn pawn = new(p1.pieceData, p1.go, p1._moveLogic)
                 {
                     disableEnPassantNextTurn = p1.disableEnPassantNextTurn,
                     doubleMovedLastTurn = p1.doubleMovedLastTurn
@@ -37,7 +35,6 @@ namespace Pieces
             p2.pieceData = p1.pieceData;
             p2.go = p1.go;
             p2._moveLogic = p1._moveLogic;
-            p2._pieces = p1._pieces;
             p2.disableEnPassantNextTurn = p1.disableEnPassantNextTurn;
             p2.doubleMovedLastTurn = p1.doubleMovedLastTurn;
             return p2;
@@ -125,7 +122,7 @@ namespace Pieces
                 return false;
             if (pieceData.color == targetColor)
             {
-                _pieces[targetSquarePos].isDefended = true;
+                _moveLogic._pieces[targetSquarePos].isDefended = true;
                 return false;
             }
 
@@ -139,7 +136,7 @@ namespace Pieces
 
             int square = _moveLogic.GetSquare(pos);
             if (square is (int)PieceType.Pawn + (int)PieceColor.White or (int)PieceType.Pawn + (int)PieceColor.Black)
-                return (Pawn)_pieces[pos];
+                return (Pawn)_moveLogic._pieces[pos];
             return null;
         }
 
