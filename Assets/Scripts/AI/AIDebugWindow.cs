@@ -11,8 +11,21 @@ public class AIDebugWindow : MonoBehaviour
     [SerializeField] private int moveCalculationDepth;
 
     [Header("UI References")] 
-    [SerializeField] private GameObject textPrefab;
+    [SerializeField] private GameObject smallTextPrefab;
+    [SerializeField] private GameObject bigTextPrefab;
     [SerializeField] private Transform textListParent;
+
+    void OnEnable()
+    {
+        ActionsBus.OnCheckmate += ShowCheckmateText;
+        ActionsBus.OnDraw += ShowDrawText;
+    }
+
+    void OnDisable()
+    {
+        ActionsBus.OnCheckmate -= ShowCheckmateText;
+        ActionsBus.OnDraw -= ShowDrawText;
+    }
     
     [Button]
     IEnumerator DebugMoveCount()
@@ -20,6 +33,8 @@ public class AIDebugWindow : MonoBehaviour
         for (int i = textListParent.childCount - 1; i >= 0 ; i--)
             Destroy(textListParent.GetChild(i).gameObject);
         
+        GameObject moveCountText = Instantiate(smallTextPrefab, textListParent);
+        moveCountText.GetComponentInChildren<TextMeshProUGUI>().text = "";
         for (int i = 1; i <= moveCalculationDepth; i++)
         {
             DateTime initialTime = DateTime.Now;
@@ -30,12 +45,29 @@ public class AIDebugWindow : MonoBehaviour
             TimeSpan diff = DateTime.Now - initialTime;
             float timeDiff = diff.Seconds * 1000 + diff.Milliseconds;
             
-            GameObject newText = Instantiate(textPrefab, textListParent);
-            string txt = $"depth: {i}; {numPositions} positions, Time: {timeDiff}  milliseconds";
             
-            newText.GetComponentInChildren<TextMeshProUGUI>().text = txt;
-            newText.GetComponentInChildren<TextMeshProUGUI>().enabled = true;
+            string txt = $"depth: {i}; {numPositions} positions, Time: {timeDiff}  milliseconds\n";
+            
+            moveCountText.GetComponentInChildren<TextMeshProUGUI>().text += txt;
+            moveCountText.GetComponentInChildren<TextMeshProUGUI>().enabled = true;
         }
+    }
+
+    void ShowCheckmateText(PieceColor checkmatedColor)
+    {
+        GameObject checkmateText = Instantiate(bigTextPrefab, textListParent);
+        PieceColor winnerColor = checkmatedColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
+        string msg = $"Checkmate! ({winnerColor.ToString() } wins)";
+        checkmateText.GetComponentInChildren<TextMeshProUGUI>().text = msg;
+    }
+
+    void ShowDrawText(DrawOutcomes drawOutcome)
+    {
+        GameObject checkmateText = Instantiate(bigTextPrefab, textListParent);
+        
+        // Different text depending on how draw was achieved
+        string msg = $"Draw! (because of  {drawOutcome.ToString()})";
+        checkmateText.GetComponentInChildren<TextMeshProUGUI>().text = msg;
     }
 
     public void CalculateNumPositions()

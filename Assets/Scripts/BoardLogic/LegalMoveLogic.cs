@@ -7,6 +7,8 @@ using NUnit.Framework.Constraints;
 using Pieces;
 using UnityEngine;
 
+public enum DrawOutcomes { None, Stalemate, ThreefoldRepetition, InsufficientMaterial, FiftyMoveRule }
+
 public class LegalMoveLogic : MonoBehaviour
 {
     public static LegalMoveLogic Instance { get;  private set; }
@@ -66,11 +68,6 @@ public class LegalMoveLogic : MonoBehaviour
         Instance = this;
     }
 
-    public void AssignLegalMoves()
-    {
-        
-    }
-
     public Dictionary<Piece, List<Move>> GetAllLegalMoves(Dictionary<Vector2Int, Piece> pieces, PieceColor colorToPlay)
     {
         King targetKing = colorToPlay ==  PieceColor.Black ? whiteKing : blackKing;
@@ -90,7 +87,7 @@ public class LegalMoveLogic : MonoBehaviour
             // For pieces that are pinned
             List<Move> movesWithoutPins = new();
             
-            if (pins.TryGetValue(goToPieces[pieceMoves.Key.go], out List<Vector2Int> posToRemove))
+            if (pins.TryGetValue(pieceMoves.Key, out List<Vector2Int> posToRemove))
             {
                 // Piece is located in pins dict, only allow moves inside list
                 foreach (Move move in pieceMoves.Value)
@@ -248,6 +245,16 @@ public class LegalMoveLogic : MonoBehaviour
         }
             
         _lookThroughKingSquares.Add(kingPos + clampedDiff);
+    }
+
+    public Piece GetPieceFromGO(GameObject go)
+    {
+        foreach (Piece piece in legalMoves.Keys)
+        {
+            if (piece.go == go) return piece;
+        }
+
+        return null;
     }
 
     void StorePiecePerf(Piece piece, int time)
