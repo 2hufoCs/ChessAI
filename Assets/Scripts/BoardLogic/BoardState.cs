@@ -20,6 +20,7 @@ public class BoardState
     public Dictionary<Piece, List<Vector2Int>> WhiteTargetedSquares { get; } = new();
     public Dictionary<Piece, List<Vector2Int>> BlackTargetedSquares { get; } = new();
     public int EnemyCheckCount { get; }
+    public bool CanBlockCheck { get;  }
     public List<Vector2Int> BlockCheckSquares { get; } = new();
     public List<Vector2Int> LookThroughKingSquares { get; } = new();
     public Dictionary<Piece, List<Vector2Int>> Pins { get; } = new();
@@ -60,6 +61,8 @@ public class BoardState
         WhiteTargetedSquares = legalLogic.WhiteTargetedSquares.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         BlackTargetedSquares = legalLogic.BlackTargetedSquares.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         EnemyCheckCount = legalLogic.EnemyCheckCount;
+        CanBlockCheck = legalLogic.CanBlockCheck;
+        
         BlockCheckSquares = legalLogic.BlockCheckSquares;
         LookThroughKingSquares = legalLogic.LookThroughKingSquares;
         Pins = legalLogic.pins.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 public class AIDebugWindow : MonoBehaviour
 {
-    [SerializeField] private Minmax minmax;
+    [SerializeField] private AIBot minmax;
     [SerializeField] private int moveCalculationDepth;
 
     [Header("UI References")] 
@@ -59,6 +59,7 @@ public class AIDebugWindow : MonoBehaviour
         PieceColor winnerColor = checkmatedColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
         string msg = $"Checkmate! ({winnerColor.ToString() } wins)";
         checkmateText.GetComponentInChildren<TextMeshProUGUI>().text = msg;
+        Debug.Log("checkmate");
     }
 
     void ShowDrawText(DrawOutcomes drawOutcome)

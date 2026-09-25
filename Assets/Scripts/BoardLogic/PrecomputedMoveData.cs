@@ -79,6 +79,7 @@ public class PrecomputedMoveData
                 // Blocked by friendly piece, can't move any further in that direction
                 if (friendlyColor == targetSquareColor)
                 {
+                    if (piece.pieceData.type == PieceType.Bishop && targetType == PieceType.Queen) Debug.Log("bishop defending queen");
                     pieces[targetSquare].isDefended = true;
                     break;
                 }

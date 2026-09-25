@@ -6,7 +6,7 @@ using NaughtyAttributes;
 using Pieces;
 using UnityEngine;
 
-public class Minmax : MonoBehaviour
+public class AIBot : MonoBehaviour
 {
     [SerializeField] private int _maxDepth;
     [HideInInspector] public int totalPositions;
@@ -15,7 +15,8 @@ public class Minmax : MonoBehaviour
     [SerializeField] private LegalMoveLogic _legalGenerator;
     [SerializeField] private MoveLogic _moveLogic;
 
-    private Dictionary<Move, int> depth1MoveCount = new();
+    private List<Move> depth1Moves = new();
+    private List<int> depth1MoveCount = new();
 
     private DateTime legalMoveTime;
     private DateTime makeMoveTime;
@@ -23,9 +24,11 @@ public class Minmax : MonoBehaviour
 
     public IEnumerator GetOptimizedMoveCount(int depth)
     {
+        depth1Moves.Clear();
         depth1MoveCount.Clear();
         _moveLogic.HideVisualsBeforeComputing();
         yield return new WaitForEndOfFrame();
+        Debug.Log("balls");
         
         totalPositions = GetMoveCount(depth);
         _moveLogic.ShowVisualsAfterComputing();
@@ -33,8 +36,7 @@ public class Minmax : MonoBehaviour
 
     private int GetMoveCount(int depth)
     {
-        if (depth == 0) 
-            return 1;
+        if (depth == 0) return 1;
         var initialTime = DateTime.Now;
 
         Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic.Pieces, _moveLogic.ColorToPlay);
@@ -55,6 +57,14 @@ public class Minmax : MonoBehaviour
                 moves[pieceMoves.Key][i] = move;
                 
                 makeMoveTime += DateTime.Now - initialTime;
+                
+                if (depth == _maxDepth)
+                {
+                    depth1Moves.Add(move);
+                    depth1MoveCount.Add(0);
+                }
+                else if (depth == 1 && depth1Moves.Count > 0) depth1MoveCount[^1]++;
+                if (depth == 1 && depth1Moves.Count == 1) Debug.Log($"move after a2a3: {CoordIntToString(move.startSquare)}{CoordIntToString(move.endSquare)}");
                 
                 // 2 - Calculate move count recursively from this new position
                 int newMoveCount = GetMoveCount(depth - 1);
@@ -85,8 +95,8 @@ public class Minmax : MonoBehaviour
     public void DebugMoveCount()
     {
         string msg = "";
-        foreach (KeyValuePair<Move, int> move in depth1MoveCount)
-            msg += $"{CoordIntToString(move.Key.startSquare)}{CoordIntToString(move.Key.endSquare)}: {move.Value}\n";
+        for (int i = 0; i < depth1Moves.Count; i++)
+            msg += $"{CoordIntToString(depth1Moves[i].startSquare)}{CoordIntToString(depth1Moves[i].endSquare)}: {depth1MoveCount[i]}\n";
         Debug.Log(msg);
     }
 

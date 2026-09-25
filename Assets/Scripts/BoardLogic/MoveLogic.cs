@@ -7,6 +7,7 @@ using System.Linq;
 using DG.Tweening;
 using NaughtyAttributes;
 using Pieces;
+using UnityEngine.SceneManagement;
 
 public enum PieceType { None, Pawn, Knight, Bishop, Rook, Queen, King }
 public enum PieceColor { None = -1, White = 0, Black = 8}
@@ -23,7 +24,7 @@ public class MoveLogic : MonoBehaviour
     private readonly Stack<KeyValuePair<Move, Piece>> _undoMoves = new();
     
     [Header("Main parameters")] 
-    private PieceColor _colorToPlay = PieceColor.White;
+    [SerializeField] private PieceColor _colorToPlay = PieceColor.White;
     public PieceColor ColorToPlay =>  _colorToPlay;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -84,6 +85,7 @@ public class MoveLogic : MonoBehaviour
         _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
         BoardState newState = new(this, _legalGenerator);
 
+        Debug.Log("new turn, " + _legalGenerator.LegalMoves.Count);
         if (_legalGenerator.LegalMoves.Count == 0)
         {
             if (_colorToPlay == PieceColor.Black ? _blackKing.isInCheck : _whiteKing.isInCheck)
@@ -233,36 +235,6 @@ public class MoveLogic : MonoBehaviour
         _undoMoves.Clear();
     }
 
-    // public void UnmakeMove(Piece piece, Move move, bool trackMove = true)
-    // {
-    //     // Get necessary data
-    //     PieceData data = GetPieceData(piece.go.GetComponent<SpriteRenderer>().sprite);
-    //     int value = (int)data.type + (int)data.color;
-    //     bool isPlayerHuman = data.color == PieceColor.White && BoardSettings.Instance.isWhiteHuman || data.color == PieceColor.Black && BoardSettings.Instance.isBlackHuman;
-    //     
-    //     // Calculate piece target value (either normal capture or en passant)
-    //     bool enPassant = move.enPassantCapture != null;
-    //     int targetValue = enPassant ? (int)move.enPassantCapture.pieceData.type + (int)move.enPassantCapture.pieceData.color : 
-    //         move.pieceOnTargetSquare != null ? (int)move.pieceOnTargetSquare.pieceData.type + (int)move.pieceOnTargetSquare.pieceData.color : 0;
-    //     
-    //     // Update board matrix and pieces dict
-    //     _board[move.startSquare.y, move.startSquare.x] = value;
-    //     _board[move.endSquare.y, move.endSquare.x] = targetValue;
-    //     
-    //     _pieces.Remove(move.endSquare);
-    //     _pieces.TryAdd(move.startSquare, piece);
-    //     if (isPlayerHuman) piece.go.transform.position = BoardToWorld(move.startSquare);
-    //     
-    //     // Revive piece at end square
-    //     if (targetValue > 0 && !enPassant)
-    //     {
-    //         if (isPlayerHuman) move.pieceOnTargetSquare.go.SetActive(true);
-    //         _pieces.Add(move.endSquare, move.pieceOnTargetSquare);
-    //     }
-    //     
-    //     SpecialPieceUnmake(piece, move, trackMove);
-    // }
-
     public void HideVisualsBeforeComputing()
     {
         foreach (KeyValuePair<Vector2Int, Piece> piece in _pieces)
@@ -391,6 +363,8 @@ public class MoveLogic : MonoBehaviour
         return false;
     }
     
+    public void RestartGame() => SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    
     Piece TryDragPiece(Collider2D hit, Vector2 mouseWorldPos, Vector2Int snappedWholePos)
     {
         if (!hit)
@@ -406,6 +380,8 @@ public class MoveLogic : MonoBehaviour
     void InitializeDraggedPiece(Piece pieceToDrag, Vector2Int snappedWholePos)
     {
         _legalGenerator.heldPiece = _legalGenerator.GetPieceFromGO(pieceToDrag.go);
+        if (_legalGenerator.heldPiece == null) return;
+        
         _legalGenerator.heldPiece.go.GetComponent<SpriteRenderer>().sortingLayerName = "Overlays";
         _legalGenerator.heldPieceStartSquare = snappedWholePos;
         
