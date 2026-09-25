@@ -67,7 +67,7 @@ namespace Pieces
                 PieceColor targetColor = targetSquare > 8 ? PieceColor.Black : targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
                 {
-                    _moveLogic._pieces[targetSquarePos].isDefended = true;
+                    _moveLogic.Pieces[targetSquarePos].isDefended = true;
                     continue;
                 }
                     
@@ -110,8 +110,8 @@ namespace Pieces
                     }
                     
                     // Rule n°3: path between king and rook can't be targeted by enemy square
-                    Dictionary<Piece, List<Vector2Int>> enemyTargetedSquares = pieceData.color == PieceColor.Black ? 
-                        LegalMoveLogic.Instance.whiteTargetedSquares :  LegalMoveLogic.Instance.blackTargetedSquares;
+                    Dictionary<Piece, List<Vector2Int>> enemyTargetedSquares = _moveLogic.ColorToPlay == PieceColor.Black ? 
+                        LegalMoveLogic.Instance.WhiteTargetedSquares : LegalMoveLogic.Instance.BlackTargetedSquares;
                     foreach (List<Vector2Int> pieceTargets in enemyTargetedSquares.Values)
                     {
                         if (pieceTargets.Contains(pos))

@@ -53,7 +53,7 @@ namespace Pieces
                     targetSquare > 0 ? PieceColor.White : PieceColor.None;
                 if (pieceData.color == targetColor)
                 {
-                    _moveLogic._pieces[targetSquarePos].isDefended = true;
+                    _moveLogic.Pieces[targetSquarePos].isDefended = true;
                     continue;
                 }
                     

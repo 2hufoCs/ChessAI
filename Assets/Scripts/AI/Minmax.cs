@@ -37,7 +37,7 @@ public class Minmax : MonoBehaviour
             return 1;
         var initialTime = DateTime.Now;
 
-        Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic._pieces, _moveLogic._colorToPlay);
+        Dictionary<Piece, List<Move>> moves = _legalGenerator.GetAllLegalMoves(_moveLogic.Pieces, _moveLogic.ColorToPlay);
         int numPositions = 0;
         
         legalMoveTime += DateTime.Now - initialTime;

@@ -72,7 +72,7 @@ public class PrecomputedMoveData
                 if (targetType == PieceType.King && targetSquareColor == enemyColor && pinnedPiecePos != -Vector2Int.one)
                 {
                     newDirMoves.Add(startPos);
-                    LegalMoveLogic.pins[pieces[pinnedPiecePos]] = newDirMoves;
+                    LegalMoveLogic.Instance.pins[pieces[pinnedPiecePos]] = newDirMoves;
                     break;
                 }
                 

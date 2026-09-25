@@ -14,14 +14,17 @@ public enum PieceColor { None = -1, White = 0, Black = 8}
 public class MoveLogic : MonoBehaviour
 {
     private int[,] _board = new int[8, 8];
-    public Dictionary<Vector2Int, Piece> _pieces = new();
-    public readonly Dictionary<Vector2, Piece> _piecesAliveAndDead = new();
+    public int[,] Board => _board;
+    private Dictionary<Vector2Int, Piece> _pieces = new();
+    public Dictionary<Vector2Int, Piece> Pieces => _pieces;
+    private readonly Dictionary<Vector2, Piece> _piecesAliveAndDead = new();
     
     private readonly Stack<KeyValuePair<Move, Piece>> _movesPlayed = new();
     private readonly Stack<KeyValuePair<Move, Piece>> _undoMoves = new();
     
     [Header("Main parameters")] 
-    public PieceColor _colorToPlay = PieceColor.White;
+    private PieceColor _colorToPlay = PieceColor.White;
+    public PieceColor ColorToPlay =>  _colorToPlay;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     public bool IsGamePaused { get => _isGamePaused; set => Pause(value); }
@@ -79,9 +82,9 @@ public class MoveLogic : MonoBehaviour
     void RecomputeLegalMoves()
     {
         _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
-        BoardState newState = new(_board, _pieces, _legalGenerator.legalMoves, _legalGenerator.goToPieces, _colorToPlay);
+        BoardState newState = new(this, _legalGenerator);
 
-        if (_legalGenerator.legalMoves.Count == 0)
+        if (_legalGenerator.LegalMoves.Count == 0)
         {
             if (_colorToPlay == PieceColor.Black ? _blackKing.isInCheck : _whiteKing.isInCheck)
                 ActionsBus.OnCheckmate(_colorToPlay);
@@ -280,7 +283,7 @@ public class MoveLogic : MonoBehaviour
         }
     }
 
-    public void UnmakeMoveState(bool changeTurn = true)
+    public void UnmakeMoveState()
     {
         if (BoardState.boardStates.Count == 0)
         {
@@ -289,14 +292,30 @@ public class MoveLogic : MonoBehaviour
         }
 
         // Remove last stored state
-        if (changeTurn && BoardState.boardStates.Count > 1)
+        if (BoardState.boardStates.Count > 1)
         {
             BoardState.UndoBoardState();
-            _colorToPlay =  _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White; // Don't change turn when base pos
+            Debug.Log("after undoing board state, e5 square is " + BoardState.boardStates.Peek().BoardValueStates[3, 4]);
         }
+        //if (changeTurn) _colorToPlay =  _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White; // Don't change turn when base pos
         
         // Load previously stored board state
-        BoardState.boardStates.Peek().LoadBoardState(ref _board, ref _pieces, ref _legalGenerator.legalMoves, ref _legalGenerator.goToPieces, ref _colorToPlay);
+        BoardState.boardStates.Peek().LoadBoardState();
+    }
+
+    public void LoadBoardState(BoardState state)
+    {
+        _board = state.BoardValueStates.Clone() as int[,];
+        
+        Dictionary<Vector2Int, Piece> piecesCopy = new();
+        foreach (KeyValuePair<Vector2Int, Piece> piece in state.PiecesStates)
+        {
+            Piece copy = piece.Value.DeepCopy(piece.Value);
+            piecesCopy[piece.Key] = copy;
+        }
+        _pieces = piecesCopy;
+        
+        _colorToPlay = state.PlayerColor;
     }
 
     public void UnmakeLastMoveState()
@@ -393,14 +412,14 @@ public class MoveLogic : MonoBehaviour
         // For promotion and en-passant
         _heldPawn = _legalGenerator.heldPiece.GetType() == typeof(Pawn) ? (Pawn)_legalGenerator.heldPiece : null;
         
-        if (_legalGenerator.legalMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
+        if (_legalGenerator.LegalMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
         {
             _legalGenerator.heldPieceLegalMoves = moves;
             //Debug.Log("assigning held piece legal moves at least, color: " + _legalGenerator.heldPiece.pieceData.color);
         }
         else // for debug, not supposed to happen
         {
-            foreach (KeyValuePair<Piece, List<Move>> kvp in _legalGenerator.legalMoves)
+            foreach (KeyValuePair<Piece, List<Move>> kvp in _legalGenerator.LegalMoves)
             {
                 foreach (Move move in kvp.Value)
                 {
@@ -443,9 +462,9 @@ public class MoveLogic : MonoBehaviour
         _piecesAliveAndDead.Add(pos, newPiece);
         
         // if (newPiece.pieceData.color == PieceColor.White)
-        //     _legalGenerator.whiteTargetedSquares.Add(newPiece, new List<Vector2Int>());
-        // else _legalGenerator.blackTargetedSquares.Add(newPiece, new List<Vector2Int>());
-        _legalGenerator.goToPieces.Add(newGo, newPiece);
+        //     _legalGenerator._whiteTargetedSquares.Add(newPiece, new List<Vector2Int>());
+        // else _legalGenerator._blackTargetedSquares.Add(newPiece, new List<Vector2Int>());
+        _legalGenerator.GoToPieces.Add(newGo, newPiece);
         
         // Keep track of both kings
         if (newPiece.pieceData.type == PieceType.King)
@@ -655,13 +674,13 @@ public class MoveLogic : MonoBehaviour
         
         _legalGenerator.RemovePieceFromLegalMoves(_heldPawn);
         _legalGenerator.AddPieceToLegalMoves(promotedPawn);
-        _legalGenerator.goToPieces[_heldPawn.go] = promotedPawn;
+        _legalGenerator.GoToPieces[_heldPawn.go] = promotedPawn;
         
         _colorToPlay = _colorToPlay == PieceColor.White ? PieceColor.Black : PieceColor.White;
         IsGamePaused = false;
         
         _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
-        BoardState newState = new(_board, _pieces, _legalGenerator.legalMoves, _legalGenerator.goToPieces, _colorToPlay);
+        BoardState newState = new(this, _legalGenerator);
         newState.SetPawnBeforePromotion(oldPawn);
         newState.SetPromotedPiece(promotedPawn);
     }

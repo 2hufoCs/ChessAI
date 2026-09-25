@@ -1,46 +1,71 @@
 using System.Collections.Generic;
 using System.Linq;
 using Pieces;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class BoardState
 {
     public static Stack<BoardState> boardStates = new();
-    
-    public readonly int[,] boardValueStates = new int[8, 8];
-    public readonly Dictionary<Vector2Int, Piece> piecesStates = new();
-    public readonly Dictionary<Piece, List<Move>> legalMovesStates = new();
-    public readonly Dictionary<GameObject, Piece> goToPiecesStates = new();
 
-    public readonly PieceColor playerColor;
+    private MoveLogic _moveLogic;
+    private LegalMoveLogic _legalLogic;
+
+    public int[,] BoardValueStates { get; } = new int[8, 8];
+    public Dictionary<Vector2Int, Piece> PiecesStates { get; } = new();
+    public Dictionary<Piece, List<Move>> LegalMovesStates { get; } = new();
+    public Dictionary<GameObject, Piece> GoToPiecesStates { get; } = new();
+    public PieceColor PlayerColor { get; }
+
+    // Check and pins stuff
+    public Dictionary<Piece, List<Vector2Int>> WhiteTargetedSquares { get; } = new();
+    public Dictionary<Piece, List<Vector2Int>> BlackTargetedSquares { get; } = new();
+    public int EnemyCheckCount { get; }
+    public List<Vector2Int> BlockCheckSquares { get; } = new();
+    public List<Vector2Int> LookThroughKingSquares { get; } = new();
+    public Dictionary<Piece, List<Vector2Int>> Pins { get; } = new();
+    
+    public King WhiteKing { get; }
+    public King BlackKing { get; }
 
     // Used for promotion
-    public Piece pawnBeforePromotion;
-    public Piece pawnJustPromoted;
-    public Sprite pawnSprite;
+    private Piece pawnBeforePromotion;
+    private Piece pawnJustPromoted;
+    private Sprite pawnSprite;
 
-    public BoardState(int[,] boardValueStates, Dictionary<Vector2Int, Piece> piecesStates, Dictionary<Piece, List<Move>> legalMovesStates, 
-        Dictionary<GameObject, Piece> goToPiecesStates, PieceColor playerColor)
+    public BoardState(MoveLogic moveLogic, LegalMoveLogic legalLogic)
     {
+        _moveLogic = moveLogic;
+        _legalLogic = legalLogic;
+        
         // Board values (represented as ints)
-        this.boardValueStates = boardValueStates.Clone() as int[,];
+        BoardValueStates = moveLogic.Board.Clone() as int[,];
         
         // Pieces
         Dictionary<Vector2Int, Piece> piecesCopy = new();
-        foreach (KeyValuePair<Vector2Int, Piece> piece in piecesStates)
+        foreach (KeyValuePair<Vector2Int, Piece> piece in moveLogic.Pieces)
         {
             Piece copy = piece.Value.DeepCopy(piece.Value);
             piecesCopy[piece.Key] = copy;
         }
-        this.piecesStates = piecesCopy;
+        PiecesStates = piecesCopy;
         
         // Legal moves (so the ai doesn't recompute them when unmaking a move)
-        this.legalMovesStates = legalMovesStates.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        LegalMovesStates = legalLogic.LegalMoves.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         
         // Gameobjects to pieces, for easy access
-        this.goToPiecesStates = goToPiecesStates.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        this.playerColor = playerColor;
+        GoToPiecesStates = legalLogic.GoToPieces.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        PlayerColor = moveLogic.ColorToPlay;
+        
+        // Additional check data
+        WhiteTargetedSquares = legalLogic.WhiteTargetedSquares.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        BlackTargetedSquares = legalLogic.BlackTargetedSquares.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        EnemyCheckCount = legalLogic.EnemyCheckCount;
+        BlockCheckSquares = legalLogic.BlockCheckSquares;
+        LookThroughKingSquares = legalLogic.LookThroughKingSquares;
+        Pins = legalLogic.pins.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        WhiteKing = (King)_legalLogic.whiteKing.DeepCopy(_legalLogic.whiteKing);
+        BlackKing = (King)_legalLogic.blackKing.DeepCopy(_legalLogic.blackKing);
 
         pawnBeforePromotion = null;
         pawnJustPromoted = null;
@@ -48,22 +73,10 @@ public class BoardState
         boardStates.Push(this);
     }
 
-    public void LoadBoardState(ref int[,] board, ref Dictionary<Vector2Int, Piece> pieces, 
-        ref Dictionary<Piece, List<Move>> legalMoves, ref Dictionary<GameObject, Piece> goToPieces, ref PieceColor colorToPlay)
+    public void LoadBoardState()
     {
-        board = boardValueStates.Clone() as int[,];
-        
-        Dictionary<Vector2Int, Piece> piecesCopy = new();
-        foreach (KeyValuePair<Vector2Int, Piece> piece in piecesStates)
-        {
-            Piece copy = piece.Value.DeepCopy(piece.Value);
-            piecesCopy[piece.Key] = copy;
-        }
-        pieces =  piecesCopy;
-        
-        legalMoves = legalMovesStates.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        goToPieces = goToPiecesStates.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        colorToPlay = playerColor;
+        _moveLogic.LoadBoardState(this);
+        _legalLogic.LoadBoardState(this);
     }
 
     public static void UndoBoardState()
@@ -77,6 +90,7 @@ public class BoardState
             stateToRemove.pawnJustPromoted = stateToRemove.pawnBeforePromotion;
             stateToRemove.pawnJustPromoted.go.GetComponent<SpriteRenderer>().sprite = stateToRemove.pawnSprite;
         }
+        Debug.Log("undid board state, count is now: " + boardStates.Count);
     }
 
     public void SetPawnBeforePromotion(Pawn pawn)

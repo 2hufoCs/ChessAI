@@ -13,22 +13,31 @@ public class LegalMoveLogic : MonoBehaviour
 {
     public static LegalMoveLogic Instance { get;  private set; }
     
-    public Dictionary<Piece, List<Vector2Int>> whiteTargetedSquares = new();
-    public Dictionary<Piece, List<Vector2Int>> blackTargetedSquares = new();
+    private Dictionary<Piece, List<Vector2Int>> _whiteTargetedSquares = new();
+    private Dictionary<Piece, List<Vector2Int>> _blackTargetedSquares = new();
+    public Dictionary<Piece, List<Vector2Int>> WhiteTargetedSquares => _whiteTargetedSquares;
+    public Dictionary<Piece, List<Vector2Int>> BlackTargetedSquares => _blackTargetedSquares;
     
-    Dictionary<Piece, List<Move>> pseudolegalMoves = new();
-    public Dictionary<Piece, List<Move>> legalMoves = new();
-    public Dictionary<GameObject, Piece> goToPieces = new();
+    private Dictionary<Piece, List<Move>> _pseudolegalMoves = new();
+    private Dictionary<Piece, List<Move>> _legalMoves = new();
+    public Dictionary<Piece, List<Move>> LegalMoves => _legalMoves;
+    private Dictionary<GameObject, Piece> _goToPieces = new();
+    public Dictionary<GameObject, Piece> GoToPieces => _goToPieces;
     
     // Used to deal with checks
     private bool _canBlockCheck;
+    public  bool CanBlockCheck => _canBlockCheck;
+    private int _enemyCheckCount;
+    public int EnemyCheckCount => _enemyCheckCount;
     private bool _canTakeChecker;
-    private int enemyCheckCount;
+    
     private List<Vector2Int> _blockCheckSquares = new();
+    public  List<Vector2Int> BlockCheckSquares => _blockCheckSquares;
     private List<Vector2Int> _lookThroughKingSquares = new();
+    public List<Vector2Int> LookThroughKingSquares => _lookThroughKingSquares;
     
     // Used to deal with pins
-    public static Dictionary<Piece, List<Vector2Int>> pins = new();
+    public Dictionary<Piece, List<Vector2Int>> pins = new();
     public King whiteKing;
     public King blackKing;
     
@@ -47,7 +56,8 @@ public class LegalMoveLogic : MonoBehaviour
     private readonly List<GameObject> _targetedSquaresHighlighters = new();
     private readonly List<GameObject> _blockOptionsHighlighters = new();
     private readonly List<GameObject> _pinHighlighters = new();
-
+    
+    // All following fields are performance-related
     private int pseudoLegalCount = 0;
     private int trulyLegalCount = 0;
     
@@ -77,7 +87,7 @@ public class LegalMoveLogic : MonoBehaviour
         DateTime initialTime = DateTime.Now;
         Dictionary<Piece, List<Move>> pseudoLegalMoves = GetPseudoLegalMoves(pieces, targetKing);
         pseudoLegalCount += (DateTime.Now - initialTime).Milliseconds;
-        legalMoves = new();
+        _legalMoves = new();
         
         initialTime = DateTime.Now;
         
@@ -100,7 +110,7 @@ public class LegalMoveLogic : MonoBehaviour
             
             if (!friendlyKing.isInCheck && pieceMoves.Key != friendlyKing)
             {
-                legalMoves[pieceMoves.Key] = movesWithoutPins;
+                _legalMoves[pieceMoves.Key] = movesWithoutPins;
                 continue;
             }
             
@@ -128,24 +138,23 @@ public class LegalMoveLogic : MonoBehaviour
                 if (_blockCheckSquares.Contains(move.endSquare))
                     newMoves.Add(move);
             }
-            legalMoves.Add(pieceMoves.Key, newMoves);
+            _legalMoves.Add(pieceMoves.Key, newMoves);
         }
         
         trulyLegalCount +=  (DateTime.Now - initialTime).Milliseconds;
 
-        return legalMoves;
+        return _legalMoves;
     }
     
     public Dictionary<Piece, List<Move>> GetPseudoLegalMoves(Dictionary<Vector2Int, Piece> pieces, King targetKing)
     {
         // Reinitialize lists
-        Dictionary<Piece, List<Vector2Int>> targetedSquares = new();
-        pseudolegalMoves.Clear();
-        whiteTargetedSquares.Clear();
-        blackTargetedSquares.Clear();
+        _pseudolegalMoves.Clear();
+        _whiteTargetedSquares.Clear();
+        _blackTargetedSquares.Clear();
         
         // Reset a bunch of stuff
-        enemyCheckCount = 0;
+        _enemyCheckCount = 0;
         targetKing.isInCheck = false;
         _canBlockCheck = true;
         _canTakeChecker = true;
@@ -169,8 +178,8 @@ public class LegalMoveLogic : MonoBehaviour
             DateTime initialTime = DateTime.Now;
             
             List<Move> pseudoMoves = piece.Value.GetPseudolegalMoves(piece.Key);
-            pseudolegalMoves.Add(piece.Value, new List<Move>());
-            pseudolegalMoves[piece.Value].AddRange(pseudoMoves);
+            _pseudolegalMoves.Add(piece.Value, new List<Move>());
+            _pseudolegalMoves[piece.Value].AddRange(pseudoMoves);
             
             int newTime = (DateTime.Now - initialTime).Milliseconds;
             piecePseudoLegalCount += newTime;
@@ -183,7 +192,7 @@ public class LegalMoveLogic : MonoBehaviour
             ShowBlockOptions();
             ShowPins();
         }
-        return pseudolegalMoves;
+        return _pseudolegalMoves;
     }
 
     void LookForCheck(KeyValuePair<Vector2Int, Piece> piece, King targetKing, Dictionary<Vector2Int, Piece> pieces)
@@ -198,9 +207,9 @@ public class LegalMoveLogic : MonoBehaviour
             {
                 // King is in check, verify if player can block or not
                 targetKing.isInCheck = true;
-                enemyCheckCount++;
-                _canBlockCheck &= enemyCheckCount < 2;
-                _canTakeChecker &= enemyCheckCount < 2;
+                _enemyCheckCount++;
+                _canBlockCheck &= _enemyCheckCount < 2;
+                _canTakeChecker &= _enemyCheckCount < 2;
             
                 GetKingLinesOfAttack(targetKing, piece);
             }
@@ -209,12 +218,13 @@ public class LegalMoveLogic : MonoBehaviour
             targetedSquares.Add(piece.Key);
         
         if (targetKing.pieceData.color == PieceColor.White)
-            blackTargetedSquares.Add(piece.Value, targetedSquares);
-        else whiteTargetedSquares.Add(piece.Value, targetedSquares);
+            _blackTargetedSquares.Add(piece.Value, targetedSquares);
+        else _whiteTargetedSquares.Add(piece.Value, targetedSquares);
     }
 
     void GetKingLinesOfAttack(King targetKing, KeyValuePair<Vector2Int, Piece> piece)
     {
+        Debug.Log("king in check :((((");
         Vector2Int basePos = Vector2Int.RoundToInt(piece.Key);
         Vector2Int kingPos = Vector2Int.RoundToInt(WorldToBoard(targetKing.go.transform.position));
         _blockCheckSquares.Add(basePos);
@@ -247,9 +257,23 @@ public class LegalMoveLogic : MonoBehaviour
         _lookThroughKingSquares.Add(kingPos + clampedDiff);
     }
 
+    public void LoadBoardState(BoardState state)
+    {
+        _legalMoves = state.LegalMovesStates;
+        _goToPieces = state.GoToPiecesStates;
+        _whiteTargetedSquares = state.WhiteTargetedSquares;
+        _blackTargetedSquares = state.BlackTargetedSquares;
+        _enemyCheckCount = state.EnemyCheckCount;
+        _blockCheckSquares = state.BlockCheckSquares;
+        _lookThroughKingSquares = state.LookThroughKingSquares;
+        pins =  state.Pins;
+        whiteKing = state.WhiteKing;
+        blackKing = state.BlackKing;
+    }
+    
     public Piece GetPieceFromGO(GameObject go)
     {
-        foreach (Piece piece in legalMoves.Keys)
+        foreach (Piece piece in _legalMoves.Keys)
         {
             if (piece.go == go) return piece;
         }
@@ -285,7 +309,7 @@ public class LegalMoveLogic : MonoBehaviour
     public bool IsSquareTargeted(Vector2Int pos, PieceColor friendlyColor)
     {
         Dictionary<Piece, List<Vector2Int>> enemyTargets =
-            friendlyColor == PieceColor.White ? blackTargetedSquares : whiteTargetedSquares;
+            friendlyColor == PieceColor.White ? _blackTargetedSquares : _whiteTargetedSquares;
         foreach (List<Vector2Int> positions in enemyTargets.Values)
         {
             if (positions.Contains(pos)) return true;
@@ -298,12 +322,12 @@ public class LegalMoveLogic : MonoBehaviour
     {
         if (piece.pieceData.color == PieceColor.White)
         {
-            pseudolegalMoves.Remove(piece);
-            whiteTargetedSquares.Remove(piece);
+            _pseudolegalMoves.Remove(piece);
+            _whiteTargetedSquares.Remove(piece);
             return;
         }
-        pseudolegalMoves.Remove(piece);
-        blackTargetedSquares.Remove(piece);
+        _pseudolegalMoves.Remove(piece);
+        _blackTargetedSquares.Remove(piece);
     }
 
     public void AddPieceToLegalMoves(Piece piece)
@@ -320,12 +344,12 @@ public class LegalMoveLogic : MonoBehaviour
             
         if (piece.pieceData.color == PieceColor.White)
         {
-            pseudolegalMoves.Add(piece, moves);
-            whiteTargetedSquares.Add(piece, positions);
+            _pseudolegalMoves.Add(piece, moves);
+            _whiteTargetedSquares.Add(piece, positions);
             return;
         }
-        pseudolegalMoves.Add(piece, moves);
-        blackTargetedSquares.Add(piece, positions);
+        _pseudolegalMoves.Add(piece, moves);
+        _blackTargetedSquares.Add(piece, positions);
     }
     
     public Move FindPseudoLegalMove(Vector2Int endSquare)
@@ -377,7 +401,7 @@ public class LegalMoveLogic : MonoBehaviour
     public void ShowTargetedSquares(King targetedKing)
     {
         // HideTargetedSquares();
-        // foreach (List<Vector2Int> posList in targetedKing.pieceData.color == PieceColor.White ? blackTargetedSquares.Values : whiteTargetedSquares.Values)
+        // foreach (List<Vector2Int> posList in targetedKing.pieceData.color == PieceColor.White ? _blackTargetedSquares.Values : _whiteTargetedSquares.Values)
         // {
         //     foreach (Vector2Int pos in posList)
         //     {

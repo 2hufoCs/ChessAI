@@ -30,7 +30,7 @@ namespace Pieces
 
         public override List<Move> GetPseudolegalMoves(Vector2 initialPos)
         {
-            List<Move> moves = PrecomputedMoveData.GenerateSlidingMoves(this, initialPos, _moveLogic._pieces);
+            List<Move> moves = PrecomputedMoveData.GenerateSlidingMoves(this, initialPos, _moveLogic.Pieces);
             return moves;
         }
     }

@@ -123,7 +123,7 @@ namespace Pieces
                 return false;
             if (pieceData.color == targetColor)
             {
-                _moveLogic._pieces[targetSquarePos].isDefended = true;
+                _moveLogic.Pieces[targetSquarePos].isDefended = true;
                 return false;
             }
 
@@ -137,7 +137,7 @@ namespace Pieces
 
             int square = _moveLogic.GetSquare(pos);
             if (square is (int)PieceType.Pawn + (int)PieceColor.White or (int)PieceType.Pawn + (int)PieceColor.Black)
-                return (Pawn)_moveLogic._pieces[pos];
+                return (Pawn)_moveLogic.Pieces[pos];
             return null;
         }
 
