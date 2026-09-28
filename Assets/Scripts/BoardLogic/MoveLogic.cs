@@ -704,7 +704,7 @@ public class MoveLogic : MonoBehaviour
     }
 
     [Button]
-    void PrintBoardMatrix()
+    public void PrintBoardMatrix()
     {
         string msg = "";
         for (int i = 7; i >= 0; i--)

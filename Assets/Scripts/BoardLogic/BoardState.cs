@@ -26,7 +26,9 @@ public class BoardState
     public Dictionary<Piece, List<Vector2Int>> Pins { get; } = new();
     
     public King WhiteKing { get; }
+    public Vector2Int WhiteKingPos { get; }
     public King BlackKing { get; }
+    public Vector2Int BlackKingPos { get; }
 
     // Used for promotion
     private Piece pawnBeforePromotion;
@@ -68,7 +70,10 @@ public class BoardState
         Pins = legalLogic.pins.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         WhiteKing = (King)_legalLogic.whiteKing.DeepCopy(_legalLogic.whiteKing);
+        WhiteKingPos = WorldToBoard(_legalLogic.whiteKing.go.transform.position);
         BlackKing = (King)_legalLogic.blackKing.DeepCopy(_legalLogic.blackKing);
+        BlackKingPos = WorldToBoard(_legalLogic.blackKing.go.transform.position);
+
 
         pawnBeforePromotion = null;
         pawnJustPromoted = null;

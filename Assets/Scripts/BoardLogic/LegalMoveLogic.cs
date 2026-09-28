@@ -214,7 +214,10 @@ public class LegalMoveLogic : MonoBehaviour
             {
                 targetedSquares.Add(move.endSquare);
                 if (move.endSquare == kingPos)
+                {
+                    Debug.Log($"check, targeting at " + move.endSquare);
                     GetKingLinesOfAttack(targetKing, piece);
+                }
             }
         }
 
@@ -232,7 +235,8 @@ public class LegalMoveLogic : MonoBehaviour
 
     void GetKingLinesOfAttack(King targetKing, KeyValuePair<Vector2Int, Piece> piece)
     {
-        //Debug.Log("check, man");
+        Debug.Log("check, man");
+        
         // King is in check, verify if player can block or not
         targetKing.isInCheck = true;
         _enemyCheckCount++;
@@ -281,9 +285,12 @@ public class LegalMoveLogic : MonoBehaviour
         _blockCheckSquares = state.BlockCheckSquares;
         _canBlockCheck = state.CanBlockCheck;
         _lookThroughKingSquares = state.LookThroughKingSquares;
-        pins =  state.Pins;
+        pins = state.Pins;
+        
         whiteKing = state.WhiteKing;
         blackKing = state.BlackKing;
+        
+        Debug.Log("reloaded board state, black king pos is now " + WorldToBoard(blackKing.go.transform.position));
     }
     
     public Piece GetPieceFromGO(GameObject go)
