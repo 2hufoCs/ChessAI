@@ -11,4 +11,9 @@ public abstract class Piece
     public abstract List<Move> GetPseudolegalMoves(Vector2 initialPos);
     
     public abstract Piece DeepCopy(Piece pieceToCopy, Piece pieceToOverwrite = null);
+
+    public bool IsKing(PieceColor wantedColor)
+    {
+        return pieceData.type == PieceType.King && pieceData.color == wantedColor;
+    }
 }

@@ -32,8 +32,8 @@ public class MoveLogic : MonoBehaviour
     private bool _isGamePaused;
     
     // Keep track of both kings
-    public King _whiteKing;
-    public King _blackKing;
+    private King _whiteKing;
+    private King _blackKing;
     private Pawn _heldPawn; // Used to calculate en-passant 
 
     private Vector2Int[] _whiteRooksPos;

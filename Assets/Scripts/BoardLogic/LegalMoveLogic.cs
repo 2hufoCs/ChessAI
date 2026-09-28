@@ -108,7 +108,7 @@ public class LegalMoveLogic : MonoBehaviour
             }
             else movesWithoutPins = new(pieceMoves.Value);
             
-            if (!friendlyKing.isInCheck && pieceMoves.Key != friendlyKing)
+            if (!friendlyKing.isInCheck && pieceMoves.Key.IsKing(friendlyKing.pieceData.color))
             {
                 _legalMoves[pieceMoves.Key] = movesWithoutPins;
                 continue;
@@ -117,11 +117,13 @@ public class LegalMoveLogic : MonoBehaviour
             List<Move> newMoves = new();
             foreach (Move move in movesWithoutPins)
             {
+                Debug.Log("checking moves");
                 // If piece is king, simply need to move to non-targeted square
-                if (pieceMoves.Key == friendlyKing)
+                if (pieceMoves.Key.IsKing(friendlyKing.pieceData.color))
                 {
                     if (!IsSquareTargeted(move.endSquare, friendlyKing.pieceData.color) && !_lookThroughKingSquares.Contains(move.endSquare))
                         newMoves.Add(move);
+                    Debug.Log($"is {friendlyKing.pieceData.color} king targeted when going to {move.endSquare}: {IsSquareTargeted(move.endSquare, friendlyKing.pieceData.color)}");
                     continue;
                 }
 
@@ -288,9 +290,9 @@ public class LegalMoveLogic : MonoBehaviour
         pins = state.Pins;
         
         whiteKing = state.WhiteKing;
+        whiteKing.go.transform.position = BoardToWorld(state.WhiteKingPos);
         blackKing = state.BlackKing;
-        
-        Debug.Log("reloaded board state, black king pos is now " + WorldToBoard(blackKing.go.transform.position));
+        blackKing.go.transform.position = BoardToWorld(state.BlackKingPos);
     }
     
     public Piece GetPieceFromGO(GameObject go)
