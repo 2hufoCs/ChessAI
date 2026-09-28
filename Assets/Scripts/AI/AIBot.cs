@@ -28,7 +28,6 @@ public class AIBot : MonoBehaviour
         depth1MoveCount.Clear();
         _moveLogic.HideVisualsBeforeComputing();
         yield return new WaitForEndOfFrame();
-        Debug.Log("balls");
         
         totalPositions = GetMoveCount(depth);
         _moveLogic.ShowVisualsAfterComputing();
@@ -52,8 +51,8 @@ public class AIBot : MonoBehaviour
                 
                 initialTime = DateTime.Now;
                 
-                // 1 - Play move, and update move accordingly
-                move = _moveLogic.MakeMove(pieceMoves.Key, move, false);
+                //Debug.Log($"depth {depth}, before making move: {_moveLogic.ColorToPlay}");
+                move = _moveLogic.MakeMove(pieceMoves.Key, move, false, depth != 1);
                 moves[pieceMoves.Key][i] = move;
                 
                 makeMoveTime += DateTime.Now - initialTime;
@@ -64,7 +63,9 @@ public class AIBot : MonoBehaviour
                     depth1MoveCount.Add(0);
                 }
                 else if (depth == 1 && depth1Moves.Count > 0) depth1MoveCount[^1]++;
-                if (depth == 1 && depth1Moves.Count == 1) Debug.Log($"move after a2a3: {CoordIntToString(move.startSquare)}{CoordIntToString(move.endSquare)}");
+                string coord = CoordIntToString(move.startSquare) + CoordIntToString(move.endSquare);
+                Debug.Log($"depth {depth}, move: {CoordIntToString(move.startSquare)}{CoordIntToString(move.endSquare)}");
+                //if (depth == 1 && depth1Moves.Count == 1) 
                 
                 // 2 - Calculate move count recursively from this new position
                 int newMoveCount = GetMoveCount(depth - 1);
@@ -73,10 +74,12 @@ public class AIBot : MonoBehaviour
                 initialTime = DateTime.Now;
                 
                 // 3 - Unmake move
-                _moveLogic.UnmakeMoveState();
+                if (depth != 1) _moveLogic.UnmakeMoveState();
+                else BoardState.boardStates.Peek().LoadBoardState();
                 
                 unmakeMoveTime += DateTime.Now - initialTime;
             }
+            //_moveLogic.ColorToPlay = _moveLogic.ColorToPlay == PieceColor.White ? PieceColor.Black : PieceColor.White;
         }
 
         return numPositions;

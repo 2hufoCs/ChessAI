@@ -93,7 +93,7 @@ public class BoardState
             stateToRemove.pawnJustPromoted = stateToRemove.pawnBeforePromotion;
             stateToRemove.pawnJustPromoted.go.GetComponent<SpriteRenderer>().sprite = stateToRemove.pawnSprite;
         }
-        Debug.Log("undid board state, count is now: " + boardStates.Count);
+        //Debug.Log("undid board state, count is now: " + boardStates.Count);
     }
 
     public void SetPawnBeforePromotion(Pawn pawn)

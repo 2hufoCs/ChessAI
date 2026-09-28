@@ -59,16 +59,15 @@ public class AIDebugWindow : MonoBehaviour
         PieceColor winnerColor = checkmatedColor == PieceColor.Black ? PieceColor.White : PieceColor.Black;
         string msg = $"Checkmate! ({winnerColor.ToString() } wins)";
         checkmateText.GetComponentInChildren<TextMeshProUGUI>().text = msg;
-        Debug.Log("checkmate");
     }
 
     void ShowDrawText(DrawOutcomes drawOutcome)
     {
-        GameObject checkmateText = Instantiate(bigTextPrefab, textListParent);
+        GameObject drawText = Instantiate(bigTextPrefab, textListParent);
         
         // Different text depending on how draw was achieved
         string msg = $"Draw! (because of  {drawOutcome.ToString()})";
-        checkmateText.GetComponentInChildren<TextMeshProUGUI>().text = msg;
+        drawText.GetComponentInChildren<TextMeshProUGUI>().text = msg;
     }
 
     public void CalculateNumPositions()

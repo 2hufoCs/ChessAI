@@ -190,8 +190,7 @@ public class LegalMoveLogic : MonoBehaviour
             StorePiecePerf(piece.Value, newTime);
         }
         
-        foreach (KeyValuePair<Vector2Int, Piece> piece in  piecesToLookForCheck)
-            LookForCheck(piece, targetKing == whiteKing ? blackKing : whiteKing, pieces);
+        LookForCheck(piecesToLookForCheck, targetKing == whiteKing ? blackKing : whiteKing);            
         
         if (BoardSettings.Instance.debugLegalMoves)
         {
@@ -203,33 +202,37 @@ public class LegalMoveLogic : MonoBehaviour
         return _pseudolegalMoves;
     }
 
-    void LookForCheck(KeyValuePair<Vector2Int, Piece> piece, King targetKing, Dictionary<Vector2Int, Piece> pieces)
+    void LookForCheck(List<KeyValuePair<Vector2Int, Piece>> piecesToCheck, King targetKing)
     {
-        Debug.Log("looking for check with " + piece.Value);
         Vector2Int kingPos = Vector2Int.RoundToInt(WorldToBoard(targetKing.go.transform.position));
         List<Vector2Int> targetedSquares = new();
 
-        foreach (Move move in piece.Value.GetPseudolegalMoves(piece.Key))
+        // First, get all lines of attack
+        foreach (KeyValuePair<Vector2Int, Piece> piece in piecesToCheck)
         {
-            targetedSquares.Add(move.endSquare);
-            if (move.endSquare == kingPos)
-                GetKingLinesOfAttack(targetKing, piece);
+            foreach (Move move in piece.Value.GetPseudolegalMoves(piece.Key))
+            {
+                targetedSquares.Add(move.endSquare);
+                if (move.endSquare == kingPos)
+                    GetKingLinesOfAttack(targetKing, piece);
+            }
         }
 
-        if (piece.Value.isDefended)
+        // Once all lines of attack have been calculated, update targetedSquares
+        foreach (KeyValuePair<Vector2Int, Piece> piece in piecesToCheck)
         {
-            targetedSquares.Add(piece.Key);
-            if (piece.Value.pieceData.type == PieceType.Queen) Debug.Log("defended");
-        }
+            if (piece.Value.isDefended)
+                targetedSquares.Add(piece.Key);
         
-        if (targetKing.pieceData.color == PieceColor.White)
-            _blackTargetedSquares.Add(piece.Value, targetedSquares);
-        else _whiteTargetedSquares.Add(piece.Value, targetedSquares);
+            if (targetKing.pieceData.color == PieceColor.White)
+                _blackTargetedSquares.Add(piece.Value, targetedSquares);
+            else _whiteTargetedSquares.Add(piece.Value, targetedSquares);
+        }
     }
 
     void GetKingLinesOfAttack(King targetKing, KeyValuePair<Vector2Int, Piece> piece)
     {
-        Debug.Log("check, man");
+        //Debug.Log("check, man");
         // King is in check, verify if player can block or not
         targetKing.isInCheck = true;
         _enemyCheckCount++;
@@ -327,7 +330,6 @@ public class LegalMoveLogic : MonoBehaviour
             if (positions.Contains(pos)) return true;
         }
 
-        Debug.Log($"for {friendlyColor} king, pos {pos} isn't targeted by enemy");
         return false;
     }
 

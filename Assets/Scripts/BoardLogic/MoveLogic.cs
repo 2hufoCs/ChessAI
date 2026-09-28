@@ -25,7 +25,7 @@ public class MoveLogic : MonoBehaviour
     
     [Header("Main parameters")] 
     [SerializeField] private PieceColor _colorToPlay = PieceColor.White;
-    public PieceColor ColorToPlay =>  _colorToPlay;
+    public PieceColor ColorToPlay => _colorToPlay;
     [SerializeField] private string _basePositionFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     public bool IsGamePaused { get => _isGamePaused; set => Pause(value); }
@@ -83,9 +83,8 @@ public class MoveLogic : MonoBehaviour
     void RecomputeLegalMoves()
     {
         _legalGenerator.GetAllLegalMoves(_pieces, _colorToPlay);
-        BoardState newState = new(this, _legalGenerator);
+        AddNewBoardState();
 
-        Debug.Log("new turn, " + _legalGenerator.LegalMoves.Count);
         if (_legalGenerator.LegalMoves.Count == 0)
         {
             if (_colorToPlay == PieceColor.Black ? _blackKing.isInCheck : _whiteKing.isInCheck)
@@ -93,6 +92,12 @@ public class MoveLogic : MonoBehaviour
             else ActionsBus.OnDraw(DrawOutcomes.Stalemate);
         }
     }
+
+    void AddNewBoardState()
+    {
+        BoardState newState = new(this, _legalGenerator);
+    }
+
 
     void InitializeBaseCastlingData()
     {
@@ -159,7 +164,7 @@ public class MoveLogic : MonoBehaviour
         _legalGenerator.heldPiece = null;
     }
 
-    public Move MakeMove(Piece piece, Move move, bool trackMove = true)
+    public Move MakeMove(Piece piece, Move move, bool trackMove = true, bool makeBoardState = true)
     {
         // Before playing move, promotion check
         if (PromotionCheck(piece, move)) return move;
@@ -187,8 +192,7 @@ public class MoveLogic : MonoBehaviour
         SpecialPieceMoves(piece, move);
             
         _pieces.TryAdd(move.endSquare, piece);
-        if (trackMove)
-            TrackPlayedMove(piece, move);
+        //if (trackMove) TrackPlayedMove(piece, move);
         
         // If game has ended
         if (GameEndChecks(move)) return move; 
@@ -197,6 +201,7 @@ public class MoveLogic : MonoBehaviour
         {
             _colorToPlay = _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White;
             if (trackMove) ActionsBus.OnPlayerMoved();
+            else if (makeBoardState) AddNewBoardState();
         }
         else
         {
@@ -265,10 +270,7 @@ public class MoveLogic : MonoBehaviour
 
         // Remove last stored state
         if (BoardState.boardStates.Count > 1)
-        {
             BoardState.UndoBoardState();
-            Debug.Log("after undoing board state, e5 square is " + BoardState.boardStates.Peek().BoardValueStates[3, 4]);
-        }
         //if (changeTurn) _colorToPlay =  _colorToPlay ==  PieceColor.White ? PieceColor.Black : PieceColor.White; // Don't change turn when base pos
         
         // Load previously stored board state
@@ -288,6 +290,7 @@ public class MoveLogic : MonoBehaviour
         _pieces = piecesCopy;
         
         _colorToPlay = state.PlayerColor;
+        //Debug.Log($"with {BoardState.boardStates.Count} registered board states, color to play is {_colorToPlay}");
     }
 
     public void UnmakeLastMoveState()
