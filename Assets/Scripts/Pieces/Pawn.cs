@@ -5,7 +5,6 @@ namespace Pieces
 {
     public class Pawn : Piece
     {
-        public bool disableEnPassantNextTurn;
         public bool doubleMovedLastTurn;
         
         public MoveLogic _moveLogic;
@@ -28,7 +27,6 @@ namespace Pieces
             {
                 Pawn pawn = new(p1.pieceData, p1.go, p1._moveLogic)
                 {
-                    disableEnPassantNextTurn = p1.disableEnPassantNextTurn,
                     doubleMovedLastTurn = p1.doubleMovedLastTurn
                 };
                 return pawn;
@@ -39,7 +37,6 @@ namespace Pieces
             p2.go = p1.go;
             p2._moveLogic = p1._moveLogic;
             p2._moveLogic = p1._moveLogic;
-            p2.disableEnPassantNextTurn = p1.disableEnPassantNextTurn;
             p2.doubleMovedLastTurn = p1.doubleMovedLastTurn;
             return p2;
         }
@@ -67,10 +64,12 @@ namespace Pieces
             // Up-left and right-left (if there's an enemy piece)
             Vector2Int takeLeftSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir + Vector2.left);
             Vector2Int takeRightSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir + Vector2.right);
-            if (CheckSingleMove(takeLeftSquarePos, ref moves, initialPos, true))
-                _targetedCaptureSquares.Add(new Move(snappedPos, takeLeftSquarePos, DeepCopy(this)));
-            if (CheckSingleMove(takeRightSquarePos, ref moves, initialPos, true))
-                _targetedCaptureSquares.Add(new Move(snappedPos, takeRightSquarePos, DeepCopy(this)));
+            CheckSingleMove(takeLeftSquarePos, ref moves, initialPos, true);
+            CheckSingleMove(takeRightSquarePos, ref moves, initialPos, true);
+            
+            // Specify target squares (since movement squares != capture squares)
+            _targetedCaptureSquares.Add(new Move(snappedPos, takeRightSquarePos, DeepCopy(this)));
+            _targetedCaptureSquares.Add(new Move(snappedPos, takeLeftSquarePos, DeepCopy(this)));
             
             // En passant
             int enPassantRank = pieceData.color == PieceColor.White ? 4 : 3;
@@ -87,7 +86,6 @@ namespace Pieces
                 {
                     Move newMove = new Move { startSquare = snappedPos, endSquare = snappedPos + new Vector2Int(-1, Mathf.RoundToInt(forwardDir.y)), enPassantCapture = leftPawn.DeepCopy(leftPawn)};
                     newMove.preMoveEnPassantCapture = leftPawn.DeepCopy(leftPawn);
-                    //Debug.Log("can make en passant, go to kill would be " + newMove.enPassantCapture);
                     moves.Add(newMove);
                 }
             }

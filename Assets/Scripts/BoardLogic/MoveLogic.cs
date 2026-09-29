@@ -34,7 +34,8 @@ public class MoveLogic : MonoBehaviour
     // Keep track of both kings
     private King _whiteKing;
     private King _blackKing;
-    private Pawn _heldPawn; // Used to calculate en-passant 
+    //private Pawn _heldPawn; // Used to calculate en-passant 
+    private Pawn _prePromotionPawn;
 
     private Vector2Int[] _whiteRooksPos;
     private Vector2Int[] _blackRooksPos;
@@ -233,7 +234,7 @@ public class MoveLogic : MonoBehaviour
         {
             move.enPassantCapture = otherTarget.DeepCopy(otherTarget);
             Pawn pawn = (Pawn)move.enPassantCapture;
-            Debug.Log($"playing en passant, capture stats: {pawn.disableEnPassantNextTurn}, {pawn.doubleMovedLastTurn}");
+            Debug.Log($"playing en passant, capture stats: {pawn.doubleMovedLastTurn}");
         }
             
         _movesPlayed.Push(new KeyValuePair<Move, Piece>(move, piece));
@@ -337,16 +338,10 @@ public class MoveLogic : MonoBehaviour
             move.enPassantCapture.go.SetActive(false);
         }
         
-        if (_heldPawn != null)
+        if (piece.pieceData.type == PieceType.Pawn)
         {
-            //Debug.Log(piece.pieceData.type);
-            // Remove option to en-passant pawns
-            _heldPawn = (Pawn)piece;
             if (Mathf.Abs(move.startSquare.y - move.endSquare.y) == 2)
-                _heldPawn.doubleMovedLastTurn = true;
-            else if (_heldPawn.disableEnPassantNextTurn)
-                _heldPawn.doubleMovedLastTurn = false;
-            else _heldPawn.disableEnPassantNextTurn = true;
+                ((Pawn)piece).doubleMovedLastTurn = true;
         }
     }
 
@@ -358,11 +353,12 @@ public class MoveLogic : MonoBehaviour
             int endRank = piece.pieceData.color == PieceColor.White ? 7 : 0;
             if (move.endSquare.y == endRank)
             {
-                ShowPromotionChoice(_heldPawn, move);
+                ShowPromotionChoice((Pawn)piece, move);
                 return true;
             }
         }
 
+        _prePromotionPawn = null;
         return false;
     }
     
@@ -389,7 +385,7 @@ public class MoveLogic : MonoBehaviour
         _legalGenerator.heldPieceStartSquare = snappedWholePos;
         
         // For promotion and en-passant
-        _heldPawn = _legalGenerator.heldPiece.GetType() == typeof(Pawn) ? (Pawn)_legalGenerator.heldPiece : null;
+        //_heldPawn = _legalGenerator.heldPiece.GetType() == typeof(Pawn) ? (Pawn)_legalGenerator.heldPiece : null;
         
         if (_legalGenerator.LegalMoves.TryGetValue(_legalGenerator.heldPiece, out List<Move> moves))
         {
@@ -609,11 +605,17 @@ public class MoveLogic : MonoBehaviour
     void ShowPromotionChoice(Pawn pawnToPromote, Move move)
     {
         IsGamePaused = true;
+        
+        // Move piece to start square, store it in case player wants to unmake
+        Vector2Int startPos = move.startSquare;
+        _prePromotionPawn = (Pawn)pawnToPromote.DeepCopy(pawnToPromote);
+        _prePromotionPawn.go.transform.position = BoardToWorld(startPos);
+        
+        // Move piece to endsquare
         Vector2Int endPos = move.endSquare;
         pawnToPromote.go.transform.position = BoardToWorld(endPos);
 
         // Remove pawn from board matrix
-        Vector2Int startPos = move.startSquare;
         _board[startPos.y, startPos.x] = 0;
         _pieces.Remove(move.startSquare);
         
@@ -625,12 +627,12 @@ public class MoveLogic : MonoBehaviour
 
     void PromotePawn(PieceType newType)
     {
-        Pawn oldPawn = (Pawn)_heldPawn.DeepCopy(_heldPawn);
-        Vector2Int pos = Vector2Int.RoundToInt(WorldToBoard(_heldPawn.go.transform.position));
+        Pawn oldPawn = (Pawn)_prePromotionPawn.DeepCopy(_prePromotionPawn);
+        Vector2Int pos = Vector2Int.RoundToInt(WorldToBoard(_prePromotionPawn.go.transform.position));
         
         // Pawn is trans now
-        PieceData data = GetPieceData((int)newType, (int)_heldPawn.pieceData.color);
-        Piece promotedPawn = InitializePieceFromData(data, _heldPawn.go);
+        PieceData data = GetPieceData((int)newType, (int)_prePromotionPawn.pieceData.color);
+        Piece promotedPawn = InitializePieceFromData(data, _prePromotionPawn.go);
         
         _board[pos.y, pos.x] = (int)promotedPawn.pieceData.type + (int)promotedPawn.pieceData.color;
         promotedPawn.go.GetComponent<SpriteRenderer>().sprite = promotedPawn.pieceData.sprite;
@@ -640,7 +642,7 @@ public class MoveLogic : MonoBehaviour
             Destroy(_spawnedPromotionChoice);
         
         // If target pos is taken by other piece, kill it
-        if (_pieces.TryGetValue(pos, out Piece pieceToDestroy) == _heldPawn.go)
+        if (_pieces.TryGetValue(pos, out Piece pieceToDestroy) == _prePromotionPawn.go)
         {
             if (pieceToDestroy != promotedPawn)
             {
@@ -651,9 +653,9 @@ public class MoveLogic : MonoBehaviour
 
         _pieces[pos] =  promotedPawn;
         
-        _legalGenerator.RemovePieceFromLegalMoves(_heldPawn);
+        _legalGenerator.RemovePieceFromLegalMoves(_prePromotionPawn);
         _legalGenerator.AddPieceToLegalMoves(promotedPawn);
-        _legalGenerator.GoToPieces[_heldPawn.go] = promotedPawn;
+        _legalGenerator.GoToPieces[_prePromotionPawn.go] = promotedPawn;
         
         _colorToPlay = _colorToPlay == PieceColor.White ? PieceColor.Black : PieceColor.White;
         IsGamePaused = false;

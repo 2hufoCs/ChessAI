@@ -176,6 +176,10 @@ public class LegalMoveLogic : MonoBehaviour
                 continue;
             }
             
+            // For pawns, reset double moved info
+            if (piece.Value.pieceData.type == PieceType.Pawn)
+                ((Pawn)piece.Value).doubleMovedLastTurn = false;
+            
             // Get piece pseudo legal moves, track time taken
             DateTime initialTime = DateTime.Now;
             
@@ -210,10 +214,13 @@ public class LegalMoveLogic : MonoBehaviour
         // First, get all lines of attack
         foreach (KeyValuePair<Vector2Int, Piece> piece in piecesToCheck)
         {
-            List<Move> targetsToIterate = piece.Value.pieceData.type == PieceType.Pawn
-                ? ((Pawn)piece.Value).TargetedCaptureSquares : piece.Value.GetPseudolegalMoves(piece.Key);
+            List<Move> targetsToIterate = piece.Value.GetPseudolegalMoves(piece.Key); 
+            if (piece.Value.pieceData.type == PieceType.Pawn) 
+                targetsToIterate = ((Pawn)piece.Value).TargetedCaptureSquares;
+            
             foreach (Move move in targetsToIterate)
             {
+                
                 targetedSquares.Add(move.endSquare);
                 if (move.endSquare == kingPos)
                     GetKingLinesOfAttack(targetKing, piece);
@@ -276,14 +283,14 @@ public class LegalMoveLogic : MonoBehaviour
 
     public void LoadBoardState(BoardState state)
     {
-        _legalMoves = state.LegalMovesStates;
-        _goToPieces = state.GoToPiecesStates;
-        _whiteTargetedSquares = state.WhiteTargetedSquares;
-        _blackTargetedSquares = state.BlackTargetedSquares;
+        _legalMoves = state.LegalMovesStates.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        _goToPieces = state.GoToPiecesStates.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        _whiteTargetedSquares = state.WhiteTargetedSquares.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        _blackTargetedSquares = state.BlackTargetedSquares.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         _enemyCheckCount = state.EnemyCheckCount;
-        _blockCheckSquares = state.BlockCheckSquares;
+        _blockCheckSquares = new(state.BlockCheckSquares);
         _canBlockCheck = state.CanBlockCheck;
-        _lookThroughKingSquares = state.LookThroughKingSquares;
+        _lookThroughKingSquares = new (state.LookThroughKingSquares);
         pins = state.Pins;
         
         whiteKing = (King)state.WhiteKing.DeepCopy(state.WhiteKing);
