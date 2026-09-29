@@ -83,6 +83,7 @@ public class PrecomputedMoveData
                     break;
                 }
                     
+                // TODO: en passant pin
                 
                 if (pinnedPiecePos == -Vector2Int.one) moves.Add(move);
                 newDirMoves.Add(targetSquare);

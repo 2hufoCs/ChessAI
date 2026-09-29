@@ -64,7 +64,7 @@ public class AIBot : MonoBehaviour
                 }
                 else if (depth == 1 && depth1Moves.Count > 0) depth1MoveCount[^1]++;
                 string coord = CoordIntToString(move.startSquare) + CoordIntToString(move.endSquare);
-                Debug.Log($"depth {depth}, move: {coord}");
+                //Debug.Log($"depth {depth}, move: {coord}");
                 //_moveLogic.PrintBoardMatrix();
                 //if (depth == 1 && depth1Moves.Count == 1) 
                 

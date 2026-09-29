@@ -10,6 +10,9 @@ namespace Pieces
         
         public MoveLogic _moveLogic;
         
+        public List<Move> TargetedCaptureSquares => _targetedCaptureSquares;
+        private List<Move> _targetedCaptureSquares = new();
+        
         public Pawn(PieceData pieceData, GameObject go, MoveLogic moveLogic)
         {
             this.pieceData = pieceData;
@@ -45,6 +48,7 @@ namespace Pieces
         {
             List<Move> moves = new();
             Vector2Int snappedPos = Vector2Int.RoundToInt(initialPos);
+            _targetedCaptureSquares = new();
             
             // Forward step
             Vector2 forwardDir = pieceData.color == PieceColor.White ? Vector2.up : Vector2.down;
@@ -63,8 +67,10 @@ namespace Pieces
             // Up-left and right-left (if there's an enemy piece)
             Vector2Int takeLeftSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir + Vector2.left);
             Vector2Int takeRightSquarePos = Vector2Int.RoundToInt(initialPos + forwardDir + Vector2.right);
-            CheckSingleMove(takeLeftSquarePos, ref moves, initialPos, true);
-            CheckSingleMove(takeRightSquarePos, ref moves, initialPos, true);
+            if (CheckSingleMove(takeLeftSquarePos, ref moves, initialPos, true))
+                _targetedCaptureSquares.Add(new Move(snappedPos, takeLeftSquarePos, DeepCopy(this)));
+            if (CheckSingleMove(takeRightSquarePos, ref moves, initialPos, true))
+                _targetedCaptureSquares.Add(new Move(snappedPos, takeRightSquarePos, DeepCopy(this)));
             
             // En passant
             int enPassantRank = pieceData.color == PieceColor.White ? 4 : 3;
@@ -108,7 +114,6 @@ namespace Pieces
             int targetSquare = _moveLogic.GetSquare(targetSquarePos);
             Move move = new Move(Vector2Int.RoundToInt(startPos), targetSquarePos, DeepCopy(this, this));
             
-            Pawn prePawn = (Pawn)move.preMovePieceCopy;
             if (!haveToTake)
             {
                 if (targetSquare != 0)

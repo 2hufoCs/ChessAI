@@ -108,7 +108,7 @@ public class LegalMoveLogic : MonoBehaviour
             }
             else movesWithoutPins = new(pieceMoves.Value);
             
-            if (!friendlyKing.isInCheck && pieceMoves.Key.IsKing(friendlyKing.pieceData.color))
+            if (!friendlyKing.isInCheck && !pieceMoves.Key.IsKing(friendlyKing.pieceData.color))
             {
                 _legalMoves[pieceMoves.Key] = movesWithoutPins;
                 continue;
@@ -117,13 +117,11 @@ public class LegalMoveLogic : MonoBehaviour
             List<Move> newMoves = new();
             foreach (Move move in movesWithoutPins)
             {
-                Debug.Log("checking moves");
                 // If piece is king, simply need to move to non-targeted square
                 if (pieceMoves.Key.IsKing(friendlyKing.pieceData.color))
                 {
                     if (!IsSquareTargeted(move.endSquare, friendlyKing.pieceData.color) && !_lookThroughKingSquares.Contains(move.endSquare))
                         newMoves.Add(move);
-                    Debug.Log($"is {friendlyKing.pieceData.color} king targeted when going to {move.endSquare}: {IsSquareTargeted(move.endSquare, friendlyKing.pieceData.color)}");
                     continue;
                 }
 
@@ -212,14 +210,13 @@ public class LegalMoveLogic : MonoBehaviour
         // First, get all lines of attack
         foreach (KeyValuePair<Vector2Int, Piece> piece in piecesToCheck)
         {
-            foreach (Move move in piece.Value.GetPseudolegalMoves(piece.Key))
+            List<Move> targetsToIterate = piece.Value.pieceData.type == PieceType.Pawn
+                ? ((Pawn)piece.Value).TargetedCaptureSquares : piece.Value.GetPseudolegalMoves(piece.Key);
+            foreach (Move move in targetsToIterate)
             {
                 targetedSquares.Add(move.endSquare);
                 if (move.endSquare == kingPos)
-                {
-                    Debug.Log($"check, targeting at " + move.endSquare);
                     GetKingLinesOfAttack(targetKing, piece);
-                }
             }
         }
 
@@ -289,9 +286,9 @@ public class LegalMoveLogic : MonoBehaviour
         _lookThroughKingSquares = state.LookThroughKingSquares;
         pins = state.Pins;
         
-        whiteKing = state.WhiteKing;
+        whiteKing = (King)state.WhiteKing.DeepCopy(state.WhiteKing);
         whiteKing.go.transform.position = BoardToWorld(state.WhiteKingPos);
-        blackKing = state.BlackKing;
+        blackKing = (King)state.BlackKing.DeepCopy(state.BlackKing);
         blackKing.go.transform.position = BoardToWorld(state.BlackKingPos);
     }
     

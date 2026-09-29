@@ -65,15 +65,14 @@ public class BoardState
         EnemyCheckCount = legalLogic.EnemyCheckCount;
         CanBlockCheck = legalLogic.CanBlockCheck;
         
-        BlockCheckSquares = legalLogic.BlockCheckSquares;
-        LookThroughKingSquares = legalLogic.LookThroughKingSquares;
+        BlockCheckSquares = new (legalLogic.BlockCheckSquares);
+        LookThroughKingSquares = new (legalLogic.LookThroughKingSquares);
         Pins = legalLogic.pins.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         WhiteKing = (King)_legalLogic.whiteKing.DeepCopy(_legalLogic.whiteKing);
         WhiteKingPos = WorldToBoard(_legalLogic.whiteKing.go.transform.position);
         BlackKing = (King)_legalLogic.blackKing.DeepCopy(_legalLogic.blackKing);
         BlackKingPos = WorldToBoard(_legalLogic.blackKing.go.transform.position);
-
 
         pawnBeforePromotion = null;
         pawnJustPromoted = null;
