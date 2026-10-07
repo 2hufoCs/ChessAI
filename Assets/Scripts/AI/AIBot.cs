@@ -15,7 +15,7 @@ public class AIBot : MonoBehaviour
     [SerializeField] private LegalMoveLogic _legalGenerator;
     [SerializeField] private MoveLogic _moveLogic;
 
-    private List<DebugMove> _debugMoves;
+    private List<DebugMove> _debugMoves = new();
     private DebugMove _storedDict;
     //private List<List<int>> depthMoveCount = new();
 
@@ -23,13 +23,19 @@ public class AIBot : MonoBehaviour
     private DateTime makeMoveTime;
     private DateTime unmakeMoveTime;
 
+    private bool _debug = false;
+    private bool _debugThisBranch = false;
+
     public IEnumerator GetOptimizedMoveCount(int depth)
     {
+        _debug = depth == _maxDepth;
+        _debugThisBranch = false;
+        
         _debugMoves.Clear();
         _storedDict = null;
         for (int i = 0; i < depth; i++)
         {
-            _debugMoves.Add(new DebugMove(new Move(-Vector2Int.one, -Vector2Int.one, null), 0, null));
+            // _debugMoves.Add(new DebugMove(new Move(-Vector2Int.one, -Vector2Int.one, null), 0, null));
             //depthMoveCount.Add(new List<int>());
         }
         
@@ -40,7 +46,7 @@ public class AIBot : MonoBehaviour
         _moveLogic.ShowVisualsAfterComputing();
     }
 
-    private int GetMoveCount(int depth)
+    private int GetMoveCount(int depth, DebugMove parentDebugMove = null)
     {
         if (depth == 0) return 1;
         var initialTime = DateTime.Now;
@@ -64,15 +70,21 @@ public class AIBot : MonoBehaviour
                 
                 makeMoveTime += DateTime.Now - initialTime;
                 
-                //else if (depth == 1 && depth1Moves.Count > 0) depth1MoveCount[^1]++;
-                //string coord = CoordIntToString(move.startSquare) + CoordIntToString(move.endSquare);
-                //Debug.Log($"depth {depth}, move: {coord}");
-                //_moveLogic.PrintBoardMatrix();
-                //if (depth == 1 && depth1Moves.Count == 1) 
+                // Get new debug move
+                DebugMove newMove = null;
+                //Debug.Log($"stats; _debug = {_debug}, depth = {depth != _maxDepth}, move end square = {move.endSquare == new Vector2Int(3, 4)}");
+                if (depth == _maxDepth && move.endSquare == new Vector2Int(3, 4)) _debugThisBranch = true;
+                if (_debugThisBranch && depth != _maxDepth)
+                {
+                    newMove = new(move, depth);
+                    _debugMoves.Add(newMove);
+                    if (parentDebugMove != null) parentDebugMove.nestedDebugMove = newMove;
+                }
                 
                 // 2 - Calculate move count recursively from this new position
-                int newMoveCount = GetMoveCount(depth - 1);
+                int newMoveCount = GetMoveCount(depth - 1, newMove);
                 numPositions += newMoveCount;
+                if (newMove != null && _debug) newMove.moveCount += newMoveCount;
 
                 if (depth != 1)
                 {
@@ -107,21 +119,21 @@ public class AIBot : MonoBehaviour
         _legalGenerator.GetLegalMovePerfInfo();
     }
 
-    // public void DebugMoveCount()
-    // {
-    //     string msg = "";
-    //     for (int i = 0; i < depthMoves.Count; i++)
-    //     {
-    //         msg += $"depth {i}:\n";
-    //         for (int j = 0; j < depthMoves[i].Count; j++)
-    //         {
-    //             msg += $"{CoordIntToString(depthMoves[i][j].startSquare)}{CoordIntToString(depthMoves[i][j].endSquare)}: {depthMoveCount[i][j]}\n";
-    //         }
-    //             
-    //     }
-    //         
-    //     System.IO.File.WriteAllText("C:\\Users\\c.clement\\Desktop\\DebugLog.txt", msg);
-    // }
+    public void DebugMoveCount()
+    {
+        string msg = "";
+        Debug.Log("debug count: " + _debugMoves.Count);
+        for (int i = 0; i < _debugMoves.Count; i++)
+        {
+            // Make tabs depending on depth
+            for (int j = _debugMoves[i].depth; j < _maxDepth; j++)
+                msg += "\t";
+            msg += $"{CoordIntToString(_debugMoves[i].playedMove.startSquare)}{CoordIntToString(_debugMoves[i].playedMove.endSquare)}: {_debugMoves[i].moveCount}\n";
+        }
+            
+        System.IO.File.WriteAllText("C:\\Users\\c.clement\\Desktop\\DebugLog.txt", msg);
+        Debug.Log("finished writing content to text file");
+    }
 
     string CoordIntToString(Vector2Int coord)
     {
@@ -140,10 +152,18 @@ public class DebugMove
     public int moveCount;
     public DebugMove nestedDebugMove;
 
-    public DebugMove(Move playedMove, int moveCount, DebugMove nestedDebugMove)
+    public int depth;
+
+    // public DebugMove(Move playedMove, int moveCount, DebugMove nestedDebugMove)
+    // {
+    //     this.playedMove = playedMove;
+    //     this.moveCount = moveCount;
+    //     this.nestedDebugMove = nestedDebugMove;
+    // }
+
+    public DebugMove(Move playedMove, int depth)
     {
         this.playedMove = playedMove;
-        this.moveCount = moveCount;
-        this.nestedDebugMove = nestedDebugMove;
+        this.depth = depth;
     }
 }
